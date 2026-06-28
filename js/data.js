@@ -14,8 +14,8 @@ export async function loadData() {
   return Object.fromEntries(entries);
 }
 
-// Couche 1 uniquement (Noyau jouable) : on filtre tout le contenu prévu pour plus tard.
-export const COUCHE_ACTIVE = 1;
+// Couche 2 (Extension des secteurs) : on filtre tout le contenu prévu pour plus tard.
+export const COUCHE_ACTIVE = 2;
 
 export function byCouche(list, max = COUCHE_ACTIVE) {
   return list.filter((item) => (item.couche ?? 1) <= max);

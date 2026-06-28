@@ -2,8 +2,10 @@ import {
   activeRecipes, activeDestinations, activeGrades,
   startProduction, sellProduct, buyIngredient, hireEmployee, startHarvest,
   availableOptions, currentClientNode, chooseClientOption,
+  unlockedSecteurs, lockableSecteurs, secteurUnlockCost, unlockSecteur,
 } from './engine.js';
 import { isEmployeeFree } from './state.js';
+import { COUCHE_ACTIVE, byCouche } from './data.js';
 
 function el(tag, cls, html) {
   const e = document.createElement('div');
@@ -34,12 +36,38 @@ export function render(state) {
   });
   document.getElementById('pauseBtn').textContent = state.paused ? '▶' : '⏸';
 
+  renderSectors(state);
   renderRecipes(state);
   renderEmployees(state);
   renderHarvest(state);
   renderMarket(state);
   renderLog(state);
   renderClientModal(state);
+}
+
+function renderSectors(state) {
+  const root = document.getElementById('sector-list');
+  root.innerHTML = '';
+
+  unlockedSecteurs(state).forEach((secteur) => {
+    root.appendChild(el('div', 'card-row', `<span>✅ ${secteur.nom}</span><span class="muted">débloqué</span>`));
+  });
+
+  lockableSecteurs(state).forEach((secteur) => {
+    const cout = secteurUnlockCost(state, secteur.id);
+    const salle = state.data.salles.types_salles.find((s) => s.id === secteur.salle_privilegiee_id);
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">🔒 ${secteur.nom}</span><span class="muted">${cout}p</span></div>
+      <div class="muted">${secteur.description}</div>
+      <div class="muted">Construit : ${salle?.nom}</div>
+    `);
+    const btn = document.createElement('button');
+    btn.textContent = 'Débloquer';
+    btn.disabled = state.money < cout;
+    btn.onclick = () => { unlockSecteur(state, secteur.id); render(state); };
+    card.appendChild(btn);
+    root.appendChild(card);
+  });
 }
 
 function renderRecipes(state) {
@@ -119,6 +147,7 @@ function renderEmployees(state) {
 
   const recruit = document.getElementById('recruit-list');
   recruit.innerHTML = '';
+  const secteursDisponibles = unlockedSecteurs(state);
   activeGrades(state).forEach((grade) => {
     const card = el('div', 'card', `
       <div class="card-row">
@@ -127,11 +156,20 @@ function renderEmployees(state) {
       </div>
       <div class="muted">Qualité de départ ${grade.qualite_depart_min}–${grade.qualite_depart_max}</div>
     `);
+    const row = el('div', 'card-row');
+    const select = document.createElement('select');
+    secteursDisponibles.forEach((secteur) => {
+      const opt = document.createElement('option');
+      opt.value = secteur.id;
+      opt.textContent = secteur.nom;
+      select.appendChild(opt);
+    });
     const btn = document.createElement('button');
     btn.textContent = 'Embaucher';
-    btn.disabled = state.money < grade.cout_recrutement;
-    btn.onclick = () => { hireEmployee(state, grade.id); render(state); };
-    card.appendChild(btn);
+    btn.disabled = state.money < grade.cout_recrutement || secteursDisponibles.length === 0;
+    btn.onclick = () => { hireEmployee(state, grade.id, select.value); render(state); };
+    row.append(select, btn);
+    card.appendChild(row);
     recruit.appendChild(card);
   });
 }
@@ -179,8 +217,8 @@ function renderHarvest(state) {
 function renderMarket(state) {
   const root = document.getElementById('market-list');
   root.innerHTML = '';
-  state.data.ingredients.ingredients
-    .filter((i) => (i.couche ?? 1) <= 1 && i.sources.includes('marche'))
+  byCouche(state.data.ingredients.ingredients, COUCHE_ACTIVE)
+    .filter((i) => i.sources.includes('marche'))
     .forEach((ing) => {
       const card = el('div', 'card-row', `<span>${ing.nom}</span><span class="muted">${ing.prix_marche_unitaire}p</span>`);
       const btn = document.createElement('button');

@@ -19,6 +19,36 @@ export function activeGrades(state) {
   return byCouche(state.data.employes.grades_recrutement);
 }
 
+export function unlockedSecteurs(state) {
+  return byCouche(state.data.secteurs.secteurs).filter((s) => state.secteursDebloques.has(s.id));
+}
+
+export function lockableSecteurs(state) {
+  return byCouche(state.data.secteurs.secteurs).filter((s) => !state.secteursDebloques.has(s.id));
+}
+
+export function secteurUnlockCost(state, secteurId) {
+  const secteur = state.data.secteurs.secteurs.find((s) => s.id === secteurId);
+  const salle = state.data.salles.types_salles.find((s) => s.id === secteur?.salle_privilegiee_id);
+  return salle ? salle.cout_construction : 0;
+}
+
+export function unlockSecteur(state, secteurId) {
+  const secteur = state.data.secteurs.secteurs.find((s) => s.id === secteurId);
+  if (!secteur || state.secteursDebloques.has(secteurId)) return false;
+  const cout = secteurUnlockCost(state, secteurId);
+  if (state.money < cout) return false;
+  state.money -= cout;
+  state.secteursDebloques.add(secteurId);
+  const salle = state.data.salles.types_salles.find((s) => s.id === secteur.salle_privilegiee_id);
+  addLog(state, `🏗️ Secteur "${secteur.nom}" débloqué (construction : ${salle?.nom}, ${cout} pièces).`);
+  return true;
+}
+
+export function specialiteForSecteur(state, secteurId) {
+  return state.data.employes.specialites.find((s) => s.secteur_id === secteurId);
+}
+
 function malusHorsSpecialite(emp, recipe) {
   if (emp.isPlayer) return 0;
   if (!emp.secteur_id) return 0;
@@ -77,8 +107,19 @@ function finishProduction(state, job) {
       emp.qualite = clamp(emp.qualite - regles.perte_par_tache_ratee_dans_specialite, regles.qualite_min, regles.qualite_max);
     }
     addLog(state, `❌ ${emp.nom} a raté la production de ${recipe.nom} (ingrédients perdus).`);
+    addLog(state, `   ↳ ${diagnosticEchec(emp, recipe, malus, qualiteResultat)}`);
   }
   emp.busy = null;
+}
+
+function diagnosticEchec(emp, recipe, malus, qualiteResultat) {
+  const manque = (recipe.seuil_reussite_min - qualiteResultat).toFixed(1);
+  if (malus > 0) {
+    return `Cause probable : ${emp.nom} travaille hors de sa spécialité (-${malus} qualité). `
+      + `Confiez plutôt cette recette à un(e) spécialiste du secteur "${recipe.secteur_id}".`;
+  }
+  return `Cause probable : qualité insuffisante (manque ${manque} point(s) par rapport au seuil de ${recipe.seuil_reussite_min}). `
+    + `Laissez l'employé progresser, ou confiez la recette à quelqu'un de plus expérimenté.`;
 }
 
 export function sellProduct(state, recipeId, qty = 1) {
@@ -103,26 +144,28 @@ export function buyIngredient(state, ingredientId, qty = 1) {
   return true;
 }
 
-export function hireEmployee(state, gradeId) {
+export function hireEmployee(state, gradeId, secteurId) {
   const grade = state.data.employes.grades_recrutement.find((g) => g.id === gradeId);
-  if (!grade) return false;
+  const specialite = specialiteForSecteur(state, secteurId);
+  if (!grade || !specialite || !state.secteursDebloques.has(secteurId)) return false;
   if (state.money < grade.cout_recrutement) return false;
   state.money -= grade.cout_recrutement;
   const qualite = grade.qualite_depart_min
     + Math.random() * (grade.qualite_depart_max - grade.qualite_depart_min);
+  const secteur = state.data.secteurs.secteurs.find((s) => s.id === secteurId);
   const emp = {
     id: `emp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    nom: `${grade.nom} #${state.employees.length}`,
+    nom: `${grade.nom} (${secteur.nom}) #${state.employees.length}`,
     isPlayer: false,
-    specialite_id: 'potionniste',
-    secteur_id: 'potions',
+    specialite_id: specialite.id,
+    secteur_id: secteurId,
     grade_id: grade.id,
     qualite,
     salaire: grade.salaire_base,
     busy: null,
   };
   state.employees.push(emp);
-  addLog(state, `🧑‍🎓 Nouveau ${grade.nom} embauché (qualité ${qualite.toFixed(1)}).`);
+  addLog(state, `🧑‍🎓 Nouveau ${grade.nom} (${secteur.nom}) embauché (qualité ${qualite.toFixed(1)}).`);
   return true;
 }
 
