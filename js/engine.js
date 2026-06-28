@@ -41,8 +41,87 @@ export function unlockSecteur(state, secteurId) {
   state.money -= cout;
   state.secteursDebloques.add(secteurId);
   const salle = state.data.salles.types_salles.find((s) => s.id === secteur.salle_privilegiee_id);
+  state.rooms.push({ id: `room_${Date.now()}_${Math.floor(Math.random() * 1000)}`, typeId: salle.id, objects: [] });
   addLog(state, `🏗️ Secteur "${secteur.nom}" débloqué (construction : ${salle?.nom}, ${cout} pièces).`);
   return true;
+}
+
+function roomType(state, typeId) {
+  return state.data.salles.types_salles.find((t) => t.id === typeId);
+}
+
+export function builtRooms(state) {
+  return state.rooms.map((room) => ({ room, type: roomType(state, room.typeId) }));
+}
+
+export function buildableRoomTypes(state) {
+  return byCouche(state.data.salles.types_salles).filter((t) =>
+    !t.secteur_associe_id || state.secteursDebloques.has(t.secteur_associe_id));
+}
+
+export function buildRoom(state, typeId) {
+  const type = roomType(state, typeId);
+  if (!type) return false;
+  if (type.secteur_associe_id && !state.secteursDebloques.has(type.secteur_associe_id)) return false;
+  if (state.money < type.cout_construction) return false;
+  state.money -= type.cout_construction;
+  state.rooms.push({ id: `room_${Date.now()}_${Math.floor(Math.random() * 1000)}`, typeId, objects: [] });
+  addLog(state, `🏛️ Nouvelle salle construite : ${type.nom} (${type.cout_construction} pièces).`);
+  return true;
+}
+
+export function activeDecorations(state) {
+  return byCouche(state.data.objets_decoration.objets);
+}
+
+export function decorateRoom(state, roomId, objectId) {
+  const room = state.rooms.find((r) => r.id === roomId);
+  const type = room && roomType(state, room.typeId);
+  const obj = state.data.objets_decoration.objets.find((o) => o.id === objectId);
+  if (!room || !type || !obj) return false;
+  if (room.objects.length >= type.slots_decoration) return false;
+  if (state.money < obj.cout) return false;
+  state.money -= obj.cout;
+  room.objects.push(objectId);
+  addLog(state, `🪄 ${obj.nom} installé dans ${type.nom} (${obj.cout} pièces).`);
+  return true;
+}
+
+export function removeDecoration(state, roomId, index) {
+  const room = state.rooms.find((r) => r.id === roomId);
+  if (!room || index < 0 || index >= room.objects.length) return false;
+  room.objects.splice(index, 1);
+  addLog(state, '🧹 Objet de décoration retiré.');
+  return true;
+}
+
+export function roomAmbiance(state, room) {
+  const regles = state.data.salles.regles_ambiance;
+  const scores = {};
+  room.objects.forEach((objId) => {
+    const obj = state.data.objets_decoration.objets.find((o) => o.id === objId);
+    obj?.tags_ambiance.forEach(({ tag, poids }) => { scores[tag] = (scores[tag] || 0) + poids; });
+  });
+  const dominant = Object.entries(scores)
+    .filter(([, score]) => score >= regles.seuil_dominance)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, regles.max_tags_dominants_simultanes)
+    .map(([tag]) => tag);
+  return { scores, dominant };
+}
+
+function roomModifiers(state, room, recipe) {
+  const type = roomType(state, room.typeId);
+  const regles = state.data.salles.regles_ambiance;
+  const malusInfo = state.data.salles.malus_hors_salle_specialisee;
+  const { dominant } = roomAmbiance(state, room);
+  const matches = recipe.tags_ambiance.filter((t) => dominant.includes(t)).length;
+  const bonusQualite = matches * regles.bonus_par_tag_correspondant.bonus_qualite;
+  const bonusVitessePct = matches * regles.bonus_par_tag_correspondant.bonus_vitesse_pourcent;
+  const horsSpecialite = type.secteur_associe_id !== recipe.secteur_id;
+  const malusQualite = horsSpecialite ? malusInfo.malus_qualite : 0;
+  const malusVitessePct = horsSpecialite ? malusInfo.malus_vitesse_pourcent : 0;
+  return { qualiteDelta: bonusQualite + malusQualite, vitessePct: bonusVitessePct + malusVitessePct, matches, dominant };
 }
 
 export function specialiteForSecteur(state, secteurId) {
@@ -60,22 +139,26 @@ function vitesseMultiplicateur(emp, recipe) {
   return 1 - malus;
 }
 
-export function startProduction(state, recipeId, employeeId) {
+export function startProduction(state, recipeId, employeeId, roomId) {
   const recipe = state.data.recettes.recettes.find((r) => r.id === recipeId);
   const emp = getEmployee(state, employeeId);
-  if (!recipe || !emp || !isEmployeeFree(emp)) return false;
+  const room = state.rooms.find((r) => r.id === roomId);
+  if (!recipe || !emp || !room || !isEmployeeFree(emp)) return false;
   if (!hasItems(state, recipe.ingredients_requis)) return false;
 
   recipe.ingredients_requis.forEach((r) => removeItem(state, r.ingredient_id, r.quantite));
 
+  const { vitessePct } = roomModifiers(state, room, recipe);
   const tempsReel = recipe.temps_base_secondes
     * (1 - (emp.qualite - 5) * 0.05)
-    * vitesseMultiplicateur(emp, recipe);
+    * vitesseMultiplicateur(emp, recipe)
+    * (1 - vitessePct / 100);
 
   const job = {
     id: `prod_${recipeId}_${state.timeSeconds}`,
     recipeId,
     employeeId,
+    roomId,
     startedAt: state.timeSeconds,
     endsAt: state.timeSeconds + Math.max(5, tempsReel),
   };
@@ -87,11 +170,13 @@ export function startProduction(state, recipeId, employeeId) {
 function finishProduction(state, job) {
   const recipe = state.data.recettes.recettes.find((r) => r.id === job.recipeId);
   const emp = getEmployee(state, job.employeeId);
+  const room = state.rooms.find((r) => r.id === job.roomId);
   if (!emp) return;
 
   const regles = state.data.employes.regles_progression_qualite;
   const malus = malusHorsSpecialite(emp, recipe);
-  const qualiteResultat = clamp(emp.qualite - malus, 1, 10);
+  const { qualiteDelta } = room ? roomModifiers(state, room, recipe) : { qualiteDelta: 0 };
+  const qualiteResultat = clamp(emp.qualite - malus + qualiteDelta, 1, 10);
   const succes = qualiteResultat >= recipe.seuil_reussite_min;
   const memeSecteur = !emp.isPlayer && emp.secteur_id === recipe.secteur_id;
 
@@ -107,19 +192,26 @@ function finishProduction(state, job) {
       emp.qualite = clamp(emp.qualite - regles.perte_par_tache_ratee_dans_specialite, regles.qualite_min, regles.qualite_max);
     }
     addLog(state, `❌ ${emp.nom} a raté la production de ${recipe.nom} (ingrédients perdus).`);
-    addLog(state, `   ↳ ${diagnosticEchec(emp, recipe, malus, qualiteResultat)}`);
+    addLog(state, `   ↳ ${diagnosticEchec(state, emp, recipe, malus, qualiteResultat, room)}`);
   }
   emp.busy = null;
 }
 
-function diagnosticEchec(emp, recipe, malus, qualiteResultat) {
+function diagnosticEchec(state, emp, recipe, malus, qualiteResultat, room) {
   const manque = (recipe.seuil_reussite_min - qualiteResultat).toFixed(1);
   if (malus > 0) {
     return `Cause probable : ${emp.nom} travaille hors de sa spécialité (-${malus} qualité). `
       + `Confiez plutôt cette recette à un(e) spécialiste du secteur "${recipe.secteur_id}".`;
   }
+  if (room) {
+    const type = roomType(state, room.typeId);
+    if (type.secteur_associe_id && type.secteur_associe_id !== recipe.secteur_id) {
+      return `Cause probable : production hors de la salle spécialisée (${type.nom} ne convient pas au secteur "${recipe.secteur_id}"). `
+        + `Construisez ou utilisez une salle adaptée.`;
+    }
+  }
   return `Cause probable : qualité insuffisante (manque ${manque} point(s) par rapport au seuil de ${recipe.seuil_reussite_min}). `
-    + `Laissez l'employé progresser, ou confiez la recette à quelqu'un de plus expérimenté.`;
+    + `Laissez l'employé progresser, décorez la salle pour un bonus d'ambiance, ou confiez la recette à quelqu'un de plus expérimenté.`;
 }
 
 export function sellProduct(state, recipeId, qty = 1) {

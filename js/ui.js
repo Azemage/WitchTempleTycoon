@@ -3,6 +3,7 @@ import {
   startProduction, sellProduct, buyIngredient, hireEmployee, startHarvest,
   availableOptions, currentClientNode, chooseClientOption,
   unlockedSecteurs, lockableSecteurs, secteurUnlockCost, unlockSecteur,
+  builtRooms, buildableRoomTypes, buildRoom, activeDecorations, decorateRoom, removeDecoration, roomAmbiance,
 } from './engine.js';
 import { isEmployeeFree } from './state.js';
 import { COUCHE_ACTIVE, byCouche } from './data.js';
@@ -40,6 +41,7 @@ export function render(state) {
   renderRecipes(state);
   renderEmployees(state);
   renderHarvest(state);
+  renderRooms(state);
   renderMarket(state);
   renderLog(state);
   renderClientModal(state);
@@ -98,17 +100,25 @@ function renderRecipes(state) {
       opt.textContent = `${emp.nom} (q${emp.qualite.toFixed(1)})`;
       select.appendChild(opt);
     });
+    const roomSelect = document.createElement('select');
+    builtRooms(state).forEach(({ room, type }) => {
+      const { dominant } = roomAmbiance(state, room);
+      const opt = document.createElement('option');
+      opt.value = room.id;
+      opt.textContent = `${type.nom}${dominant.length ? ` [${dominant.join(', ')}]` : ''}`;
+      roomSelect.appendChild(opt);
+    });
     const craftBtn = document.createElement('button');
     craftBtn.textContent = 'Produire';
     craftBtn.disabled = freeEmployees.length === 0;
-    craftBtn.onclick = () => { startProduction(state, recipe.id, select.value); render(state); };
+    craftBtn.onclick = () => { startProduction(state, recipe.id, select.value, roomSelect.value); render(state); };
 
     const sellBtn = document.createElement('button');
     sellBtn.textContent = 'Vendre 1';
     sellBtn.disabled = have === 0;
     sellBtn.onclick = () => { sellProduct(state, recipe.id, 1); render(state); };
 
-    row.append(select, craftBtn, sellBtn);
+    row.append(select, roomSelect, craftBtn, sellBtn);
     card.appendChild(row);
     root.appendChild(card);
   });
@@ -211,6 +221,74 @@ function renderHarvest(state) {
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
     `);
     active.appendChild(card);
+  });
+}
+
+function renderRooms(state) {
+  const root = document.getElementById('room-list');
+  root.innerHTML = '';
+  const decorations = activeDecorations(state);
+
+  builtRooms(state).forEach(({ room, type }) => {
+    const { scores, dominant } = roomAmbiance(state, room);
+    const card = el('div', 'card');
+    const tagsTxt = Object.keys(scores).length
+      ? Object.entries(scores).map(([tag, score]) =>
+          `<span class="tag${dominant.includes(tag) ? ' tag-dominant' : ''}">${tag} (${score})</span>`).join('')
+      : '<span class="muted">aucune ambiance</span>';
+
+    card.innerHTML = `
+      <div class="card-row"><span class="card-title">${type.nom}</span><span class="muted">${room.objects.length}/${type.slots_decoration} déco</span></div>
+      <div class="muted">Secteur : ${type.secteur_associe_id || 'générique'}</div>
+      <div>${tagsTxt}</div>
+    `;
+
+    if (room.objects.length) {
+      const objList = el('div', '');
+      room.objects.forEach((objId, idx) => {
+        const obj = state.data.objets_decoration.objets.find((o) => o.id === objId);
+        const objRow = el('div', 'card-row', `<span>${obj?.nom || objId}</span>`);
+        const rmBtn = document.createElement('button');
+        rmBtn.textContent = 'Retirer';
+        rmBtn.onclick = () => { removeDecoration(state, room.id, idx); render(state); };
+        objRow.appendChild(rmBtn);
+        objList.appendChild(objRow);
+      });
+      card.appendChild(objList);
+    }
+
+    if (room.objects.length < type.slots_decoration && decorations.length) {
+      const addRow = el('div', 'card-row');
+      const select = document.createElement('select');
+      decorations.forEach((obj) => {
+        const opt = document.createElement('option');
+        opt.value = obj.id;
+        opt.textContent = `${obj.nom} (${obj.cout}p)`;
+        select.appendChild(opt);
+      });
+      const addBtn = document.createElement('button');
+      addBtn.textContent = 'Installer';
+      addBtn.onclick = () => { decorateRoom(state, room.id, select.value); render(state); };
+      addRow.append(select, addBtn);
+      card.appendChild(addRow);
+    }
+
+    root.appendChild(card);
+  });
+
+  const buildRoot = document.getElementById('room-build-list');
+  buildRoot.innerHTML = '';
+  buildableRoomTypes(state).forEach((type) => {
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">${type.nom}</span><span class="muted">${type.cout_construction}p</span></div>
+      <div class="muted">Secteur : ${type.secteur_associe_id || 'générique'} · ${type.slots_decoration} slots déco</div>
+    `);
+    const btn = document.createElement('button');
+    btn.textContent = 'Construire';
+    btn.disabled = state.money < type.cout_construction;
+    btn.onclick = () => { buildRoom(state, type.id); render(state); };
+    card.appendChild(btn);
+    buildRoot.appendChild(card);
   });
 }
 

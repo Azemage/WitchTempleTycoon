@@ -73,6 +73,7 @@ button.active-speed { outline: 2px solid #fff; }
 .card-title { font-weight: 700; }
 .card-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tag { font-size: 0.75em; background: #3a2a4a; padding: 1px 6px; border-radius: 10px; margin-right: 4px; color: var(--muted); }
+.tag-dominant { background: var(--accent); color: var(--text); font-weight: 600; }
 .muted { color: var(--muted); font-size: 0.85em; }
 
 select { background: #150c1f; color: var(--text); border: 1px solid var(--accent); border-radius: 4px; padding: 4px; }

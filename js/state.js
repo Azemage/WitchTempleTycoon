@@ -28,6 +28,10 @@ export function createInitialState(data) {
 
     inventory: {},
 
+    rooms: [
+      { id: 'room_start', typeId: eco.demarrage.salle_depart_id, objects: [] },
+    ],
+
     productionJobs: [],
     harvestJobs: [],
 
