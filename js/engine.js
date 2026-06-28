@@ -139,62 +139,73 @@ function vitesseMultiplicateur(emp, recipe) {
   return 1 - malus;
 }
 
-export function startProduction(state, recipeId, employeeId, roomId) {
+export function startProduction(state, recipeId, employeeIds, roomId) {
   const recipe = state.data.recettes.recettes.find((r) => r.id === recipeId);
-  const emp = getEmployee(state, employeeId);
+  const ids = Array.isArray(employeeIds) ? employeeIds : [employeeIds];
+  if (!recipe) return false;
+  const needed = recipe.necessite_employes_simultanes || 1;
+  if (ids.length !== needed || new Set(ids).size !== ids.length) return false;
+  const emps = ids.map((id) => getEmployee(state, id));
   const room = state.rooms.find((r) => r.id === roomId);
-  if (!recipe || !emp || !room || !isEmployeeFree(emp)) return false;
+  if (!room || emps.some((e) => !e || !isEmployeeFree(e))) return false;
   if (!hasItems(state, recipe.ingredients_requis)) return false;
 
   recipe.ingredients_requis.forEach((r) => removeItem(state, r.ingredient_id, r.quantite));
 
+  const qualiteMoyenne = emps.reduce((s, e) => s + e.qualite, 0) / emps.length;
   const { vitessePct } = roomModifiers(state, room, recipe);
+  const vitesseEquipe = emps.reduce((s, e) => s + vitesseMultiplicateur(e, recipe), 0) / emps.length;
   const tempsReel = recipe.temps_base_secondes
-    * (1 - (emp.qualite - 5) * 0.05)
-    * vitesseMultiplicateur(emp, recipe)
+    * (1 - (qualiteMoyenne - 5) * 0.05)
+    * vitesseEquipe
     * (1 - vitessePct / 100);
 
   const job = {
     id: `prod_${recipeId}_${state.timeSeconds}`,
     recipeId,
-    employeeId,
+    employeeIds: ids,
     roomId,
     startedAt: state.timeSeconds,
     endsAt: state.timeSeconds + Math.max(5, tempsReel),
   };
-  emp.busy = { type: 'production', jobId: job.id };
+  emps.forEach((emp) => { emp.busy = { type: 'production', jobId: job.id }; });
   state.productionJobs.push(job);
   return true;
 }
 
 function finishProduction(state, job) {
   const recipe = state.data.recettes.recettes.find((r) => r.id === job.recipeId);
-  const emp = getEmployee(state, job.employeeId);
+  const emps = job.employeeIds.map((id) => getEmployee(state, id)).filter(Boolean);
   const room = state.rooms.find((r) => r.id === job.roomId);
-  if (!emp) return;
+  if (emps.length === 0) return;
 
   const regles = state.data.employes.regles_progression_qualite;
-  const malus = malusHorsSpecialite(emp, recipe);
+  const malusMoyen = emps.reduce((s, e) => s + malusHorsSpecialite(e, recipe), 0) / emps.length;
+  const qualiteMoyenne = emps.reduce((s, e) => s + e.qualite, 0) / emps.length;
   const { qualiteDelta } = room ? roomModifiers(state, room, recipe) : { qualiteDelta: 0 };
-  const qualiteResultat = clamp(emp.qualite - malus + qualiteDelta, 1, 10);
+  const qualiteResultat = clamp(qualiteMoyenne - malusMoyen + qualiteDelta, 1, 10);
   const succes = qualiteResultat >= recipe.seuil_reussite_min;
-  const memeSecteur = !emp.isPlayer && emp.secteur_id === recipe.secteur_id;
+  const nomsEquipe = emps.map((e) => e.nom).join(', ');
 
   if (succes) {
     state.products = state.products || {};
     state.products[recipe.id] = (state.products[recipe.id] || 0) + 1;
-    if (memeSecteur) {
-      emp.qualite = clamp(emp.qualite + regles.gain_par_tache_reussie_dans_specialite, regles.qualite_min, regles.qualite_max);
-    }
-    addLog(state, `✅ ${emp.nom} a produit avec succès : ${recipe.nom}.`);
+    emps.forEach((emp) => {
+      if (!emp.isPlayer && emp.secteur_id === recipe.secteur_id) {
+        emp.qualite = clamp(emp.qualite + regles.gain_par_tache_reussie_dans_specialite, regles.qualite_min, regles.qualite_max);
+      }
+    });
+    addLog(state, `✅ ${nomsEquipe} ${emps.length > 1 ? 'ont' : 'a'} produit avec succès : ${recipe.nom}.`);
   } else {
-    if (memeSecteur) {
-      emp.qualite = clamp(emp.qualite - regles.perte_par_tache_ratee_dans_specialite, regles.qualite_min, regles.qualite_max);
-    }
-    addLog(state, `❌ ${emp.nom} a raté la production de ${recipe.nom} (ingrédients perdus).`);
-    addLog(state, `   ↳ ${diagnosticEchec(state, emp, recipe, malus, qualiteResultat, room)}`);
+    emps.forEach((emp) => {
+      if (!emp.isPlayer && emp.secteur_id === recipe.secteur_id) {
+        emp.qualite = clamp(emp.qualite - regles.perte_par_tache_ratee_dans_specialite, regles.qualite_min, regles.qualite_max);
+      }
+    });
+    addLog(state, `❌ ${nomsEquipe} ${emps.length > 1 ? 'ont' : 'a'} raté la production de ${recipe.nom} (ingrédients perdus).`);
+    addLog(state, `   ↳ ${diagnosticEchec(state, emps[0], recipe, malusMoyen, qualiteResultat, room)}`);
   }
-  emp.busy = null;
+  emps.forEach((emp) => { emp.busy = null; });
 }
 
 function diagnosticEchec(state, emp, recipe, malus, qualiteResultat, room) {
@@ -225,10 +236,18 @@ export function sellProduct(state, recipeId, qty = 1) {
   return true;
 }
 
+export function marketPrice(state, ingredientId) {
+  const ing = state.data.ingredients.ingredients.find((i) => i.id === ingredientId);
+  if (!ing) return 0;
+  const fluctuation = state.priceFluctuation?.[ingredientId] || 0;
+  return Math.max(1, Math.round(ing.prix_marche_unitaire * (1 + fluctuation)));
+}
+
 export function buyIngredient(state, ingredientId, qty = 1) {
   const ing = state.data.ingredients.ingredients.find((i) => i.id === ingredientId);
   if (!ing) return false;
-  const cost = ing.prix_marche_unitaire * qty;
+  const unitPrice = marketPrice(state, ingredientId);
+  const cost = unitPrice * qty;
   if (state.money < cost) return false;
   state.money -= cost;
   addItem(state, ingredientId, qty);
@@ -320,6 +339,18 @@ export function tick(state, dtSeconds) {
   if (state.paused) return;
   state.timeSeconds += dtSeconds;
 
+  if (state.data.economie.marche.fluctuation_prix_active) {
+    state.nextPriceUpdateAt = state.nextPriceUpdateAt ?? 0;
+    if (state.timeSeconds >= state.nextPriceUpdateAt) {
+      state.priceFluctuation = state.priceFluctuation || {};
+      byCouche(state.data.ingredients.ingredients).forEach((ing) => {
+        const prev = state.priceFluctuation[ing.id] || 0;
+        state.priceFluctuation[ing.id] = clamp(prev + (Math.random() - 0.5) * 0.1, -0.2, 0.2);
+      });
+      state.nextPriceUpdateAt = state.timeSeconds + 60;
+    }
+  }
+
   state.productionJobs = state.productionJobs.filter((job) => {
     if (state.timeSeconds >= job.endsAt) { finishProduction(state, job); return false; }
     return true;
@@ -342,13 +373,35 @@ export function tick(state, dtSeconds) {
   }
 }
 
+export function reputationTier(reputation) {
+  if (reputation >= 60) return { id: 'prestige', nom: 'Client prestigieux', payoutMult: 1.6, reputationMult: 1.4 };
+  if (reputation >= 30) return { id: 'standard', nom: 'Client régulier', payoutMult: 1.3, reputationMult: 1.15 };
+  return { id: 'simple', nom: 'Client modeste', payoutMult: 1, reputationMult: 1 };
+}
+
 export function triggerClientMission(state) {
   const missions = byCouche(state.data.clients_missions.missions);
   if (missions.length === 0) return;
-  const missionDef = missions[Math.floor(Math.random() * missions.length)];
-  state.pendingClient = { missionDef, currentKey: 'intro' };
+
+  state.clientHistory = state.clientHistory || {};
+  const fideles = missions.filter((m) => (state.clientHistory[m.id]?.timesServed || 0) > 0
+    && state.clientHistory[m.id].lastSuccess);
+  let missionDef;
+  let recurrent = false;
+  if (fideles.length > 0 && Math.random() < 0.3) {
+    missionDef = fideles[Math.floor(Math.random() * fideles.length)];
+    recurrent = true;
+  } else {
+    missionDef = missions[Math.floor(Math.random() * missions.length)];
+  }
+
+  const tier = reputationTier(state.reputation);
+  state.pendingClient = { missionDef, currentKey: 'intro', tier, recurrent };
   state.paused = true;
   state.forcedPause = true;
+  addLog(state, recurrent
+    ? `🔁 Un client fidèle revient : ${missionDef.nom} (${tier.nom}).`
+    : `🚪 Nouveau client : ${missionDef.nom} (${tier.nom}).`);
 }
 
 export function currentClientNode(state) {
@@ -362,7 +415,7 @@ export function availableOptions(state) {
     !opt.requiert_secteur_debloque || state.secteursDebloques.has(opt.requiert_secteur_debloque));
 }
 
-function applyReputationForIssue(state, issue) {
+function applyReputationForIssue(state, issue, reputationMult = 1) {
   const gains = state.data.economie.reputation.gains;
   const map = {
     succes_total: gains.succes_total,
@@ -372,7 +425,7 @@ function applyReputationForIssue(state, issue) {
     echec_diagnostic_errone: gains.echec_diagnostic_errone,
     echec_sans_consequence: gains.echec_sans_consequence,
   };
-  const delta = map[issue] ?? 0;
+  const delta = Math.round((map[issue] ?? 0) * reputationMult);
   const rep = state.data.economie.reputation;
   state.reputation = clamp(state.reputation + delta, rep.valeur_min, rep.valeur_max);
   return delta;
@@ -383,17 +436,25 @@ function finalizeClientMission(state, consequence) {
   state.products = state.products || {};
   const have = recipe ? (state.products[recipe.id] || 0) : 0;
   let issue = consequence.issue;
+  const tier = state.pendingClient.tier || reputationTier(state.reputation);
+  const missionId = state.pendingClient.missionDef.id;
 
   if (recipe && have > 0) {
     state.products[recipe.id] -= 1;
-    state.money += recipe.prix_vente_base;
-    addLog(state, `🤝 Client servi (${issue}) : ${recipe.nom} vendu pour ${recipe.prix_vente_base} pièces.`);
+    const payout = Math.round(recipe.prix_vente_base * tier.payoutMult);
+    state.money += payout;
+    addLog(state, `🤝 Client servi (${issue}) : ${recipe.nom} vendu pour ${payout} pièces (${tier.nom}).`);
   } else if (recipe) {
     issue = 'echec_sans_consequence';
     addLog(state, `⚠️ Vous n'aviez pas "${recipe.nom}" en stock, le client repart les mains vides.`);
   }
 
-  const delta = applyReputationForIssue(state, issue);
+  const succes = issue.startsWith('succes');
+  state.clientHistory = state.clientHistory || {};
+  const hist = state.clientHistory[missionId] || { timesServed: 0, lastSuccess: false };
+  state.clientHistory[missionId] = { timesServed: hist.timesServed + 1, lastSuccess: succes };
+
+  const delta = applyReputationForIssue(state, issue, tier.reputationMult);
   addLog(state, `${delta >= 0 ? '⭐' : '💔'} Réputation ${delta >= 0 ? '+' : ''}${delta}.`);
 
   state.pendingClient = null;

@@ -4,6 +4,7 @@ import {
   availableOptions, currentClientNode, chooseClientOption,
   unlockedSecteurs, lockableSecteurs, secteurUnlockCost, unlockSecteur,
   builtRooms, buildableRoomTypes, buildRoom, activeDecorations, decorateRoom, removeDecoration, roomAmbiance,
+  marketPrice, reputationTier,
 } from './engine.js';
 import { isEmployeeFree } from './state.js';
 import { COUCHE_ACTIVE, byCouche } from './data.js';
@@ -22,6 +23,8 @@ function freeEmployeeOptions(state, secteurId) {
 export function render(state) {
   document.getElementById('money').textContent = Math.floor(state.money);
   document.getElementById('reputation').textContent = Math.round(state.reputation);
+  const tier = reputationTier(state.reputation);
+  document.getElementById('reputation-tier').textContent = `(${tier.nom})`;
 
   const eco = state.data.economie.temps;
   const dayLen = eco.duree_jour_secondes;
@@ -83,23 +86,29 @@ function renderRecipes(state) {
       .join(', ');
     const have = (state.products || {})[recipe.id] || 0;
 
+    const needed = recipe.necessite_employes_simultanes || 1;
+
     card.innerHTML = `
       <div class="card-row">
         <span class="card-title">${recipe.nom}</span>
         <span class="muted">vente ${recipe.prix_vente_base}p · stock ${have}</span>
       </div>
-      <div class="muted">Besoin : ${ingredientsTxt}</div>
+      <div class="muted">Besoin : ${ingredientsTxt}${needed > 1 ? ` · ${needed} employés simultanés` : ''}</div>
       <div>${recipe.tags_ambiance.map((t) => `<span class="tag">${t}</span>`).join('')}</div>
     `;
 
     const row = el('div', 'card-row');
-    const select = document.createElement('select');
-    freeEmployees.forEach((emp) => {
-      const opt = document.createElement('option');
-      opt.value = emp.id;
-      opt.textContent = `${emp.nom} (q${emp.qualite.toFixed(1)})`;
-      select.appendChild(opt);
-    });
+    const employeeSelects = [];
+    for (let i = 0; i < needed; i += 1) {
+      const select = document.createElement('select');
+      freeEmployees.forEach((emp) => {
+        const opt = document.createElement('option');
+        opt.value = emp.id;
+        opt.textContent = `${emp.nom} (q${emp.qualite.toFixed(1)})`;
+        select.appendChild(opt);
+      });
+      employeeSelects.push(select);
+    }
     const roomSelect = document.createElement('select');
     builtRooms(state).forEach(({ room, type }) => {
       const { dominant } = roomAmbiance(state, room);
@@ -110,15 +119,18 @@ function renderRecipes(state) {
     });
     const craftBtn = document.createElement('button');
     craftBtn.textContent = 'Produire';
-    craftBtn.disabled = freeEmployees.length === 0;
-    craftBtn.onclick = () => { startProduction(state, recipe.id, select.value, roomSelect.value); render(state); };
+    craftBtn.disabled = freeEmployees.length < needed;
+    craftBtn.onclick = () => {
+      startProduction(state, recipe.id, employeeSelects.map((s) => s.value), roomSelect.value);
+      render(state);
+    };
 
     const sellBtn = document.createElement('button');
     sellBtn.textContent = 'Vendre 1';
     sellBtn.disabled = have === 0;
     sellBtn.onclick = () => { sellProduct(state, recipe.id, 1); render(state); };
 
-    row.append(select, roomSelect, craftBtn, sellBtn);
+    row.append(...employeeSelects, roomSelect, craftBtn, sellBtn);
     card.appendChild(row);
     root.appendChild(card);
   });
@@ -129,10 +141,10 @@ function renderRecipes(state) {
     jobsBox.id = 'prod-jobs';
     state.productionJobs.forEach((job) => {
       const recipe = state.data.recettes.recettes.find((r) => r.id === job.recipeId);
-      const emp = state.employees.find((e) => e.id === job.employeeId);
+      const noms = job.employeeIds.map((id) => state.employees.find((e) => e.id === id)?.nom).join(', ');
       const pct = Math.min(100, ((state.timeSeconds - job.startedAt) / (job.endsAt - job.startedAt)) * 100);
       const card = el('div', 'card', `
-        <div class="card-row"><span>${recipe.nom}</span><span class="muted">${emp?.nom}</span></div>
+        <div class="card-row"><span>${recipe.nom}</span><span class="muted">${noms}</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
       `);
       jobsBox.appendChild(card);
@@ -298,10 +310,11 @@ function renderMarket(state) {
   byCouche(state.data.ingredients.ingredients, COUCHE_ACTIVE)
     .filter((i) => i.sources.includes('marche'))
     .forEach((ing) => {
-      const card = el('div', 'card-row', `<span>${ing.nom}</span><span class="muted">${ing.prix_marche_unitaire}p</span>`);
+      const prix = marketPrice(state, ing.id);
+      const card = el('div', 'card-row', `<span>${ing.nom}</span><span class="muted">${prix}p</span>`);
       const btn = document.createElement('button');
       btn.textContent = 'Acheter x1';
-      btn.disabled = state.money < ing.prix_marche_unitaire;
+      btn.disabled = state.money < prix;
       btn.onclick = () => { buyIngredient(state, ing.id, 1); render(state); };
       card.appendChild(btn);
       root.appendChild(card);
@@ -328,7 +341,8 @@ function renderClientModal(state) {
   if (!state.pendingClient) { modal.classList.add('hidden'); return; }
   modal.classList.remove('hidden');
 
-  document.getElementById('client-title').textContent = state.pendingClient.missionDef.nom;
+  const tierTxt = state.pendingClient.tier ? ` (${state.pendingClient.tier.nom})` : '';
+  document.getElementById('client-title').textContent = `${state.pendingClient.missionDef.nom}${tierTxt}`;
   const node = currentClientNode(state);
   document.getElementById('client-text').textContent = node.texte;
 

@@ -14,8 +14,8 @@ export async function loadData() {
   return Object.fromEntries(entries);
 }
 
-// Couche 3 (Salles et décoration) : on filtre tout le contenu prévu pour plus tard.
-export const COUCHE_ACTIVE = 3;
+// Couche 4 (Profondeur) : on filtre tout le contenu prévu pour plus tard.
+export const COUCHE_ACTIVE = 4;
 
 export function byCouche(list, max = COUCHE_ACTIVE) {
   return list.filter((item) => (item.couche ?? 1) <= max);
