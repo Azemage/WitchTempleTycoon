@@ -13,17 +13,17 @@ const STATION_BY_SECTEUR = {
   rituels: T.CAULDRON,
 };
 
-function buildLayout(rooms) {
+function buildTempleLayout(rooms) {
   const roomW = 6;
   const roomH = 6;
   const corridor = 1;
+  const gateCorridor = 3;
   const cols = rooms.length;
-  const width = cols * roomW + (cols - 1) * corridor + 2 + 4; // +4 for market area on the right
+  const width = cols * roomW + (cols - 1) * corridor + 2 + gateCorridor;
   const height = roomH + 2;
 
   const grid = Array.from({ length: height }, () => Array(width).fill(T.FLOOR_STONE));
 
-  // outer border walls
   for (let x = 0; x < width; x += 1) { grid[0][x] = T.WALL; grid[height - 1][x] = T.WALL; }
   for (let y = 0; y < height; y += 1) { grid[y][0] = T.WALL; grid[y][width - 1] = T.WALL; }
 
@@ -36,7 +36,7 @@ function buildLayout(rooms) {
         grid[y][x] = isBorder ? T.WALL : T.FLOOR_WOOD;
       }
     }
-    // bottom row of the room stays open floor, forming a hallway shared with the corridor/market
+    // bottom row of the room stays open floor, forming a hallway shared with the corridor
     const doorX = cursorX + Math.floor(roomW / 2);
     grid[height - 2][doorX] = T.DOOR;
 
@@ -44,7 +44,7 @@ function buildLayout(rooms) {
     const stationX = cursorX + Math.floor(roomW / 2);
     const stationY = 3;
     grid[stationY][stationX] = stationTile;
-    stations.push({ roomId: room.id, nom: room.nom, tileX: stationX, tileY: stationY });
+    stations.push({ tileX: stationX, tileY: stationY, nom: room.nom, roomId: room.id });
 
     cursorX += roomW + corridor;
     if (idx < rooms.length - 1) {
@@ -52,18 +52,44 @@ function buildLayout(rooms) {
     }
   });
 
-  // market area (right side, outside)
-  const marketX0 = cursorX;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = marketX0; x < width; x += 1) grid[y][x] = T.GRASS;
-  }
-  const marketStallX = marketX0 + 2;
-  const marketStallY = Math.floor(height / 2);
-  grid[marketStallY][marketStallX] = T.STALL;
-  grid[1][marketX0] = T.PATH;
-  for (let y = 1; y < height - 1; y += 1) grid[y][marketX0] = T.PATH;
+  const gateY = Math.floor(height / 2);
+  const gateX = width - 2;
+  grid[gateY][gateX] = T.DOOR;
 
-  return { grid, stations, market: { tileX: marketStallX, tileY: marketStallY }, width, height };
+  return { grid, stations, gate: { tileX: gateX, tileY: gateY }, width, height };
+}
+
+function buildTownLayout() {
+  const width = 16;
+  const height = 10;
+  const grid = Array.from({ length: height }, () => Array(width).fill(T.GRASS));
+
+  for (let x = 0; x < width; x += 1) { grid[0][x] = T.WALL; grid[height - 1][x] = T.WALL; }
+  for (let y = 0; y < height; y += 1) { grid[y][0] = T.WALL; grid[y][width - 1] = T.WALL; }
+
+  const midY = Math.floor(height / 2);
+  for (let y = 1; y < height - 1; y += 1) grid[y][Math.floor(width / 2)] = T.PATH;
+  for (let x = 1; x < width - 1; x += 1) grid[midY][x] = T.PATH;
+
+  const stallSpots = [
+    { x: 4, y: 3, nom: 'Étal d\'ingrédients' },
+    { x: 11, y: 3, nom: 'Étal de potions' },
+    { x: 7, y: 7, nom: 'Étal de curiosités' },
+  ];
+  stallSpots.forEach((s) => { grid[s.y][s.x] = T.STALL; });
+
+  [[2, 2], [13, 2], [2, 7], [13, 7]].forEach(([x, y]) => { grid[y][x] = T.TREE; });
+
+  const gateY = midY;
+  grid[gateY][0] = T.DOOR;
+
+  return {
+    grid,
+    width,
+    height,
+    stalls: stallSpots.map((s) => ({ tileX: s.x, tileY: s.y, nom: s.nom })),
+    gate: { tileX: 0, tileY: gateY },
+  };
 }
 
 export function initTemple(state, callbacks) {
@@ -91,13 +117,35 @@ export class TempleScene extends Phaser.Scene {
   }
 
   create() {
-    const rooms = this.gameState.rooms.map((room) => {
-      const type = this.gameState.data.salles.types_salles.find((t) => t.id === room.typeId);
-      return { id: room.id, nom: type?.nom || room.typeId, secteurId: type?.secteur_associe_id };
-    });
-    const { grid, stations, market, width, height } = buildLayout(rooms);
-    this.stations = stations;
-    this.market = market;
+    const mode = this.gameState._templeMode || 'temple';
+    this.mode = mode;
+
+    let grid;
+    let width;
+    let height;
+    let spawn;
+
+    if (mode === 'town') {
+      const { grid: g, width: w, height: h, stalls, gate } = buildTownLayout();
+      grid = g; width = w; height = h;
+      this.zones = [
+        ...stalls.map((s) => ({ ...s, onEnter: () => this.callbacks.onMarket() })),
+        { ...gate, nom: 'Retour au temple', onEnter: () => this.switchTo('temple') },
+      ];
+      spawn = { x: TILE * 1.5, y: gate.tileY * TILE + TILE / 2 };
+    } else {
+      const rooms = this.gameState.rooms.map((room) => {
+        const type = this.gameState.data.salles.types_salles.find((t) => t.id === room.typeId);
+        return { id: room.id, nom: type?.nom || room.typeId, secteurId: type?.secteur_associe_id };
+      });
+      const { grid: g, stations, gate, width: w, height: h } = buildTempleLayout(rooms);
+      grid = g; width = w; height = h;
+      this.zones = [
+        ...stations.map((s) => ({ ...s, onEnter: () => this.callbacks.onInteract(s.roomId) })),
+        { ...gate, nom: 'Aller en ville', onEnter: () => this.switchTo('town') },
+      ];
+      spawn = { x: TILE * 2, y: (height - 2) * TILE };
+    }
 
     const map = this.make.tilemap({ data: grid, tileWidth: TILE, tileHeight: TILE });
     const tileset = map.addTilesetImage('tiles', 'tiles', TILE, TILE, 0, 0);
@@ -108,7 +156,7 @@ export class TempleScene extends Phaser.Scene {
     this.physics.world.bounds.height = height * TILE;
     this.cameras.main.setBounds(0, 0, width * TILE, height * TILE);
 
-    this.player = this.physics.add.sprite(TILE * 2, (height - 2) * TILE, 'player', 0);
+    this.player = this.physics.add.sprite(spawn.x, spawn.y, 'player', 0);
     this.player.setCollideWorldBounds(true);
     this.player.body.setSize(20, 16).setOffset(6, 14);
     this.physics.add.collider(this.player, layer);
@@ -124,9 +172,13 @@ export class TempleScene extends Phaser.Scene {
 
     this.activeZone = null;
     this.input.keyboard.on('keydown-E', () => {
-      if (this.activeZone === 'market') this.callbacks.onMarket();
-      else if (this.activeZone) this.callbacks.onInteract(this.activeZone);
+      if (this.activeZone) this.activeZone.onEnter();
     });
+  }
+
+  switchTo(mode) {
+    this.gameState._templeMode = mode;
+    this.scene.restart();
   }
 
   update() {
@@ -146,16 +198,8 @@ export class TempleScene extends Phaser.Scene {
 
     const px = Math.floor(this.player.x / TILE);
     const py = Math.floor(this.player.y / TILE);
-    let nearest = null;
-    this.stations.forEach((s) => {
-      if (Math.abs(s.tileX - px) <= 1 && Math.abs(s.tileY - py) <= 1) nearest = s;
-    });
-    if (!nearest && Math.abs(this.market.tileX - px) <= 1 && Math.abs(this.market.tileY - py) <= 1) {
-      nearest = { roomId: 'market', nom: 'Marché' };
-      this.activeZone = 'market';
-    } else {
-      this.activeZone = nearest ? nearest.roomId : null;
-    }
+    const nearest = this.zones.find((z) => Math.abs(z.tileX - px) <= 1 && Math.abs(z.tileY - py) <= 1) || null;
+    this.activeZone = nearest;
 
     if (nearest) {
       this.promptText.setText(`[E] ${nearest.nom}`);
