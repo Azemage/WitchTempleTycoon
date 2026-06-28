@@ -1,0 +1,130 @@
+{
+  "_description": "Matières premières utilisées dans les recettes. 'sources' indique où/comment on peut s'en procurer : achat direct au marché, ou récolte via mission (voir missions_recolte.json).",
+
+  "rarete_niveaux": {
+    "commun": { "multiplicateur_prix": 1, "couche": 1 },
+    "peu_commun": { "multiplicateur_prix": 3, "couche": 1 },
+    "rare": { "multiplicateur_prix": 8, "couche": 2 },
+    "tres_rare": { "multiplicateur_prix": 20, "couche": 4 }
+  },
+
+  "ingredients": [
+    {
+      "id": "eau_pure",
+      "nom": "Eau pure",
+      "couche": 1,
+      "rarete": "commun",
+      "prix_marche_unitaire": 1,
+      "sources": ["marche"],
+      "secteurs_concernes": ["potions"]
+    },
+    {
+      "id": "herbes_communes",
+      "nom": "Herbes communes",
+      "couche": 1,
+      "rarete": "commun",
+      "prix_marche_unitaire": 2,
+      "sources": ["marche", "mission_recolte:foret_proche"],
+      "secteurs_concernes": ["potions"]
+    },
+    {
+      "id": "racine_seche",
+      "nom": "Racine séchée",
+      "couche": 1,
+      "rarete": "peu_commun",
+      "prix_marche_unitaire": 5,
+      "sources": ["marche", "mission_recolte:foret_proche"],
+      "secteurs_concernes": ["potions"]
+    },
+    {
+      "id": "miel_enchante",
+      "nom": "Miel enchanté",
+      "couche": 1,
+      "rarete": "peu_commun",
+      "prix_marche_unitaire": 6,
+      "sources": ["marche"],
+      "secteurs_concernes": ["potions"]
+    },
+    {
+      "id": "sel_noir",
+      "nom": "Sel noir",
+      "couche": 1,
+      "rarete": "rare",
+      "prix_marche_unitaire": 15,
+      "sources": ["marche", "mission_recolte:cotes_battues"],
+      "secteurs_concernes": ["potions", "talismans", "rituels"]
+    },
+    {
+      "id": "obsidienne",
+      "nom": "Obsidienne",
+      "couche": 1,
+      "rarete": "rare",
+      "prix_marche_unitaire": 18,
+      "sources": ["mission_recolte:montagne_volcanique"],
+      "secteurs_concernes": ["talismans", "sorts", "rituels"]
+    },
+    {
+      "id": "bois_sacre",
+      "nom": "Bois sacré",
+      "couche": 2,
+      "rarete": "peu_commun",
+      "prix_marche_unitaire": 8,
+      "sources": ["marche", "mission_recolte:foret_proche"],
+      "secteurs_concernes": ["baguettes"]
+    },
+    {
+      "id": "cristal_focalisation",
+      "nom": "Cristal de focalisation",
+      "couche": 2,
+      "rarete": "rare",
+      "prix_marche_unitaire": 22,
+      "sources": ["mission_recolte:montagne_volcanique", "marche"],
+      "secteurs_concernes": ["baguettes", "sorts"]
+    },
+    {
+      "id": "parchemin_vierge",
+      "nom": "Parchemin vierge",
+      "couche": 2,
+      "rarete": "commun",
+      "prix_marche_unitaire": 3,
+      "sources": ["marche"],
+      "secteurs_concernes": ["sorts"]
+    },
+    {
+      "id": "encre_spectrale",
+      "nom": "Encre spectrale",
+      "couche": 2,
+      "rarete": "peu_commun",
+      "prix_marche_unitaire": 9,
+      "sources": ["marche", "mission_recolte:cimetiere_oublie"],
+      "secteurs_concernes": ["sorts", "divination"]
+    },
+    {
+      "id": "os_petit_animal",
+      "nom": "Os de petit animal",
+      "couche": 2,
+      "rarete": "commun",
+      "prix_marche_unitaire": 4,
+      "sources": ["mission_recolte:foret_proche"],
+      "secteurs_concernes": ["talismans", "divination"]
+    },
+    {
+      "id": "plume_corbeau",
+      "nom": "Plume de corbeau",
+      "couche": 2,
+      "rarete": "peu_commun",
+      "prix_marche_unitaire": 7,
+      "sources": ["marche", "mission_recolte:cimetiere_oublie"],
+      "secteurs_concernes": ["divination", "sorts"]
+    },
+    {
+      "id": "larme_phenix",
+      "nom": "Larme de phénix",
+      "couche": 4,
+      "rarete": "tres_rare",
+      "prix_marche_unitaire": 80,
+      "sources": ["mission_recolte:montagne_volcanique"],
+      "secteurs_concernes": ["rituels", "potions"]
+    }
+  ]
+}

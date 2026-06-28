@@ -1,0 +1,172 @@
+{
+  "_description": "Objets achetables pour décorer les salles. Chaque objet occupe 1 slot de décoration (pas de gestion de taille/position fine en couche 3 — simplification volontaire, une vraie grille de placement pourra venir plus tard si besoin). 'tags_ambiance' contribue au score d'ambiance de la salle, voir salles.json/regles_ambiance.",
+
+  "objets": [
+    {
+      "id": "bougie_rouge",
+      "nom": "Bougie rouge",
+      "couche": 3,
+      "cout": 15,
+      "tags_ambiance": [
+        { "tag": "seduction", "poids": 2 },
+        { "tag": "passion", "poids": 2 }
+      ]
+    },
+    {
+      "id": "lit_a_baldaquin",
+      "nom": "Lit à baldaquin",
+      "couche": 3,
+      "cout": 80,
+      "tags_ambiance": [
+        { "tag": "seduction", "poids": 4 }
+      ]
+    },
+    {
+      "id": "miroir_orne",
+      "nom": "Miroir orné",
+      "couche": 3,
+      "cout": 50,
+      "tags_ambiance": [
+        { "tag": "seduction", "poids": 2 },
+        { "tag": "mystere", "poids": 2 }
+      ]
+    },
+    {
+      "id": "crane_anime",
+      "nom": "Crâne décoratif",
+      "couche": 3,
+      "cout": 30,
+      "tags_ambiance": [
+        { "tag": "tenebres", "poids": 3 },
+        { "tag": "mystere", "poids": 1 }
+      ]
+    },
+    {
+      "id": "cage_corbeau",
+      "nom": "Cage à corbeau",
+      "couche": 3,
+      "cout": 35,
+      "tags_ambiance": [
+        { "tag": "tenebres", "poids": 2 },
+        { "tag": "perception", "poids": 2 }
+      ]
+    },
+    {
+      "id": "rideaux_sombres",
+      "nom": "Rideaux sombres",
+      "couche": 3,
+      "cout": 20,
+      "tags_ambiance": [
+        { "tag": "tenebres", "poids": 2 },
+        { "tag": "discretion", "poids": 2 }
+      ]
+    },
+    {
+      "id": "plante_grimpante",
+      "nom": "Plante grimpante",
+      "couche": 3,
+      "cout": 10,
+      "tags_ambiance": [
+        { "tag": "nature", "poids": 3 }
+      ]
+    },
+    {
+      "id": "fontaine_interieure",
+      "nom": "Fontaine intérieure",
+      "couche": 3,
+      "cout": 60,
+      "tags_ambiance": [
+        { "tag": "nature", "poids": 2 },
+        { "tag": "soin", "poids": 2 }
+      ]
+    },
+    {
+      "id": "statue_doree",
+      "nom": "Statue dorée",
+      "couche": 3,
+      "cout": 90,
+      "tags_ambiance": [
+        { "tag": "lumiere", "poids": 3 },
+        { "tag": "chance", "poids": 1 }
+      ]
+    },
+    {
+      "id": "vitrail_lumineux",
+      "nom": "Vitrail lumineux",
+      "couche": 3,
+      "cout": 70,
+      "tags_ambiance": [
+        { "tag": "lumiere", "poids": 3 },
+        { "tag": "protection", "poids": 1 }
+      ]
+    },
+    {
+      "id": "armure_ancienne",
+      "nom": "Armure ancienne",
+      "couche": 3,
+      "cout": 55,
+      "tags_ambiance": [
+        { "tag": "force", "poids": 2 },
+        { "tag": "protection", "poids": 2 }
+      ]
+    },
+    {
+      "id": "forge_miniature",
+      "nom": "Forge miniature",
+      "couche": 3,
+      "cout": 65,
+      "tags_ambiance": [
+        { "tag": "force", "poids": 2 },
+        { "tag": "feu", "poids": 3 }
+      ]
+    },
+    {
+      "id": "etabli_artisan",
+      "nom": "Établi d'artisan",
+      "couche": 3,
+      "cout": 40,
+      "tags_ambiance": [
+        { "tag": "artisanat", "poids": 3 },
+        { "tag": "precision", "poids": 2 }
+      ]
+    },
+    {
+      "id": "boule_de_cristal",
+      "nom": "Boule de cristal",
+      "couche": 3,
+      "cout": 45,
+      "tags_ambiance": [
+        { "tag": "mystere", "poids": 3 },
+        { "tag": "perception", "poids": 2 }
+      ]
+    },
+    {
+      "id": "carillon_vent",
+      "nom": "Carillon de vent",
+      "couche": 3,
+      "cout": 25,
+      "tags_ambiance": [
+        { "tag": "air", "poids": 3 }
+      ]
+    },
+    {
+      "id": "trefle_quatre_feuilles_encadre",
+      "nom": "Trèfle à quatre feuilles encadré",
+      "couche": 3,
+      "cout": 35,
+      "tags_ambiance": [
+        { "tag": "chance", "poids": 3 }
+      ]
+    },
+    {
+      "id": "autel_purification",
+      "nom": "Autel de purification",
+      "couche": 4,
+      "cout": 150,
+      "tags_ambiance": [
+        { "tag": "purification", "poids": 4 },
+        { "tag": "lumiere", "poids": 2 }
+      ]
+    }
+  ]
+}

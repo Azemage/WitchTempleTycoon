@@ -1,0 +1,215 @@
+{
+  "_description": "Recettes produisibles. 'tags_ambiance' sert au système de décoration (couche 3) : si la salle où la recette est produite a une ambiance dominante qui partage des tags, bonus de qualité/vitesse (voir salles.json et objets_decoration.json pour le calcul).",
+
+  "regles_production": {
+    "temps_base_secondes": "temps de production à qualité employé = 5 (moyenne), sans bonus de salle",
+    "formule_qualite_resultat": "qualite_resultat = clamp(qualite_employe + bonus_salle - malus_hors_specialite, 1, 10)",
+    "formule_temps_reel": "temps_reel = temps_base_secondes * (1 - (qualite_employe - 5) * 0.05) * modificateur_salle_vitesse",
+    "echec_possible": "Si qualite_resultat < seuil_reussite_min de la recette, la production échoue : ingrédients consommés mais pas de produit (ou produit de qualité dégradée selon la recette)."
+  },
+
+  "recettes": [
+    {
+      "id": "philtre_soin_leger",
+      "nom": "Philtre de soin léger",
+      "secteur_id": "potions",
+      "couche": 1,
+      "seuil_reussite_min": 2,
+      "temps_base_secondes": 30,
+      "ingredients_requis": [
+        { "ingredient_id": "eau_pure", "quantite": 2 },
+        { "ingredient_id": "herbes_communes", "quantite": 1 }
+      ],
+      "prix_vente_base": 8,
+      "tags_ambiance": ["nature", "soin"]
+    },
+    {
+      "id": "potion_amour",
+      "nom": "Potion d'amour",
+      "secteur_id": "potions",
+      "couche": 1,
+      "seuil_reussite_min": 4,
+      "temps_base_secondes": 60,
+      "ingredients_requis": [
+        { "ingredient_id": "miel_enchante", "quantite": 2 },
+        { "ingredient_id": "racine_seche", "quantite": 1 }
+      ],
+      "prix_vente_base": 25,
+      "tags_ambiance": ["seduction", "passion"]
+    },
+    {
+      "id": "poison_discret",
+      "nom": "Poison discret",
+      "secteur_id": "potions",
+      "couche": 1,
+      "seuil_reussite_min": 5,
+      "temps_base_secondes": 50,
+      "ingredients_requis": [
+        { "ingredient_id": "racine_seche", "quantite": 2 },
+        { "ingredient_id": "sel_noir", "quantite": 1 }
+      ],
+      "prix_vente_base": 30,
+      "tags_ambiance": ["tenebres", "discretion"]
+    },
+    {
+      "id": "elixir_force",
+      "nom": "Élixir de force",
+      "secteur_id": "potions",
+      "couche": 1,
+      "seuil_reussite_min": 4,
+      "temps_base_secondes": 45,
+      "ingredients_requis": [
+        { "ingredient_id": "herbes_communes", "quantite": 2 },
+        { "ingredient_id": "miel_enchante", "quantite": 1 },
+        { "ingredient_id": "obsidienne", "quantite": 1 }
+      ],
+      "prix_vente_base": 35,
+      "tags_ambiance": ["force", "feu"]
+    },
+
+    {
+      "id": "sort_protection_base",
+      "nom": "Sort de protection (de base)",
+      "secteur_id": "sorts",
+      "couche": 2,
+      "seuil_reussite_min": 3,
+      "temps_base_secondes": 70,
+      "ingredients_requis": [
+        { "ingredient_id": "parchemin_vierge", "quantite": 1 },
+        { "ingredient_id": "sel_noir", "quantite": 1 }
+      ],
+      "prix_vente_base": 20,
+      "tags_ambiance": ["protection", "lumiere"]
+    },
+    {
+      "id": "sort_protection_avancee",
+      "nom": "Sort de protection avancée",
+      "secteur_id": "sorts",
+      "couche": 2,
+      "seuil_reussite_min": 6,
+      "temps_base_secondes": 110,
+      "ingredients_requis": [
+        { "ingredient_id": "parchemin_vierge", "quantite": 1 },
+        { "ingredient_id": "obsidienne", "quantite": 1 },
+        { "ingredient_id": "cristal_focalisation", "quantite": 1 }
+      ],
+      "prix_vente_base": 55,
+      "tags_ambiance": ["protection", "force"]
+    },
+    {
+      "id": "sort_detection",
+      "nom": "Sort de détection",
+      "secteur_id": "sorts",
+      "couche": 2,
+      "seuil_reussite_min": 4,
+      "temps_base_secondes": 60,
+      "ingredients_requis": [
+        { "ingredient_id": "parchemin_vierge", "quantite": 1 },
+        { "ingredient_id": "plume_corbeau", "quantite": 1 }
+      ],
+      "prix_vente_base": 22,
+      "tags_ambiance": ["perception", "air"]
+    },
+
+    {
+      "id": "baguette_debutant",
+      "nom": "Baguette débutant",
+      "secteur_id": "baguettes",
+      "couche": 2,
+      "seuil_reussite_min": 2,
+      "temps_base_secondes": 80,
+      "ingredients_requis": [
+        { "ingredient_id": "bois_sacre", "quantite": 1 }
+      ],
+      "prix_vente_base": 15,
+      "tags_ambiance": ["artisanat", "nature"]
+    },
+    {
+      "id": "baguette_duel",
+      "nom": "Baguette de duel",
+      "secteur_id": "baguettes",
+      "couche": 2,
+      "seuil_reussite_min": 6,
+      "temps_base_secondes": 150,
+      "ingredients_requis": [
+        { "ingredient_id": "bois_sacre", "quantite": 2 },
+        { "ingredient_id": "cristal_focalisation", "quantite": 1 }
+      ],
+      "prix_vente_base": 60,
+      "tags_ambiance": ["force", "precision"]
+    },
+
+    {
+      "id": "talisman_protection",
+      "nom": "Talisman de protection",
+      "secteur_id": "talismans",
+      "couche": 2,
+      "seuil_reussite_min": 3,
+      "temps_base_secondes": 65,
+      "ingredients_requis": [
+        { "ingredient_id": "os_petit_animal", "quantite": 1 },
+        { "ingredient_id": "sel_noir", "quantite": 1 }
+      ],
+      "prix_vente_base": 18,
+      "tags_ambiance": ["protection", "tenebres"]
+    },
+    {
+      "id": "amulette_chance",
+      "nom": "Amulette de chance",
+      "secteur_id": "talismans",
+      "couche": 2,
+      "seuil_reussite_min": 4,
+      "temps_base_secondes": 70,
+      "ingredients_requis": [
+        { "ingredient_id": "plume_corbeau", "quantite": 1 },
+        { "ingredient_id": "miel_enchante", "quantite": 1 }
+      ],
+      "prix_vente_base": 24,
+      "tags_ambiance": ["chance", "lumiere"]
+    },
+
+    {
+      "id": "lecture_tarot",
+      "nom": "Lecture de tarot",
+      "secteur_id": "divination",
+      "couche": 2,
+      "seuil_reussite_min": 2,
+      "temps_base_secondes": 40,
+      "ingredients_requis": [
+        { "ingredient_id": "encre_spectrale", "quantite": 1 }
+      ],
+      "prix_vente_base": 12,
+      "tags_ambiance": ["mystere", "perception"]
+    },
+    {
+      "id": "diagnostic_malediction",
+      "nom": "Diagnostic de malédiction",
+      "secteur_id": "divination",
+      "couche": 2,
+      "seuil_reussite_min": 5,
+      "temps_base_secondes": 90,
+      "ingredients_requis": [
+        { "ingredient_id": "os_petit_animal", "quantite": 1 },
+        { "ingredient_id": "encre_spectrale", "quantite": 1 }
+      ],
+      "prix_vente_base": 28,
+      "tags_ambiance": ["mystere", "tenebres"]
+    },
+
+    {
+      "id": "rituel_purification",
+      "nom": "Rituel de purification",
+      "secteur_id": "rituels",
+      "couche": 4,
+      "seuil_reussite_min": 7,
+      "temps_base_secondes": 200,
+      "ingredients_requis": [
+        { "ingredient_id": "sel_noir", "quantite": 2 },
+        { "ingredient_id": "larme_phenix", "quantite": 1 }
+      ],
+      "prix_vente_base": 120,
+      "tags_ambiance": ["lumiere", "purification"],
+      "necessite_employes_simultanes": 2
+    }
+  ]
+}

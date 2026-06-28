@@ -1,0 +1,135 @@
+{
+  "_description": "Missions clients déclenchées en temps réel, qui mettent le jeu en pause pour une séquence de dialogue à choix. Structure en arbre : chaque noeud peut proposer des options qui mènent à d'autres noeuds, déclenchent une étape de divination, ou terminent la mission avec une conséquence.",
+
+  "regles_generales": {
+    "frequence_apparition": "Un client arrive selon un minuteur aléatoire pondéré par la réputation (voir economie.json). Le jeu se met en pause automatiquement à son arrivée.",
+    "divination_etape": {
+      "_description": "Une étape de divination est un jet basé sur la qualité du devin assigné (ou du joueur si pas de devin). Peut être sautée par choix du joueur (option 'écouter aveuglément le client'), ce qui retire l'information mais fait gagner du temps.",
+      "formule_succes_divination": "probabilite_succes = clamp(0.3 + qualite_devin * 0.07, 0.1, 0.95)",
+      "consequence_echec_divination": "Le diagnostic révélé au joueur est incorrect ou incomplet, sans que le joueur le sache forcément — il peut alors choisir une réponse inadaptée en toute confiance."
+    },
+    "consequence_mauvais_choix": "Une réponse non adaptée au vrai besoin du client entraîne une pénalité de réputation, parfois un remboursement, parfois un retour ultérieur du client mécontent (mission de rattrapage générée dynamiquement par Claude Code, pas besoin de scripter chaque cas)."
+  },
+
+  "missions": [
+    {
+      "id": "demande_protection_generique",
+      "nom": "Une demande de protection",
+      "couche": 1,
+      "secteurs_concernes": ["sorts", "talismans", "divination"],
+      "intro": {
+        "texte": "Un villageois entre, visiblement nerveux. \"J'ai besoin d'un sort de protection, et vite. Quelque chose rôde autour de chez moi la nuit.\"",
+        "options": [
+          {
+            "id": "passer_divination",
+            "texte": "Proposer une lecture de divination pour comprendre la vraie nature de la menace.",
+            "requiert_secteur_debloque": "divination",
+            "consequence": { "type": "lancer_divination", "noeud_succes": "diagnostic_correct", "noeud_echec": "diagnostic_incorrect" }
+          },
+          {
+            "id": "ecouter_aveuglement",
+            "texte": "Écouter directement la demande du client sans diagnostic, pour gagner du temps.",
+            "consequence": { "type": "aller_a_noeud", "noeud": "choix_sans_diagnostic" }
+          }
+        ]
+      },
+      "noeuds": {
+        "diagnostic_correct": {
+          "texte": "La divination révèle la vraie nature de la menace : il s'agit d'une présence spirituelle errante, pas d'un simple animal ou d'une malveillance humaine.",
+          "options": [
+            {
+              "id": "proposer_talisman_protection",
+              "texte": "Proposer un talisman de protection (efficace contre les présences spirituelles).",
+              "consequence": { "type": "fin_mission", "issue": "succes_total", "produit_requis_id": "talisman_protection" }
+            },
+            {
+              "id": "proposer_sort_protection_avancee",
+              "texte": "Proposer un sort de protection avancée (couvre large, mais coûteux).",
+              "consequence": { "type": "fin_mission", "issue": "succes_total", "produit_requis_id": "sort_protection_avancee" }
+            },
+            {
+              "id": "proposer_sort_basique_quand_meme",
+              "texte": "Proposer le sort de protection basique malgré le diagnostic, par souci d'économie.",
+              "consequence": { "type": "fin_mission", "issue": "succes_partiel", "produit_requis_id": "sort_protection_base", "commentaire": "Fonctionne partiellement, le client reviendra probablement si le problème persiste." }
+            }
+          ]
+        },
+        "diagnostic_incorrect": {
+          "texte": "La divination semble indiquer une malveillance humaine ordinaire — un voisin jaloux, peut-être. (Ce diagnostic est en réalité erroné : la vraie menace est spirituelle.)",
+          "options": [
+            {
+              "id": "proposer_sort_protection_base_errone",
+              "texte": "Proposer un sort de protection basique adapté à une menace humaine.",
+              "consequence": { "type": "fin_mission", "issue": "echec_diagnostic_errone", "produit_requis_id": "sort_protection_base", "commentaire": "Le sort ne fonctionnera pas contre la vraie menace. Le client reviendra mécontent." }
+            }
+          ]
+        },
+        "choix_sans_diagnostic": {
+          "texte": "Sans diagnostic, vous devez vous fier uniquement à la description du client : quelque chose rôde la nuit.",
+          "options": [
+            {
+              "id": "proposer_sort_protection_base_sans_diag",
+              "texte": "Proposer le sort de protection de base, l'option la plus standard.",
+              "consequence": { "type": "fin_mission", "issue": "succes_partiel", "produit_requis_id": "sort_protection_base", "commentaire": "Marche dans la majorité des cas, mais pas si la menace est spirituelle." }
+            },
+            {
+              "id": "proposer_talisman_sans_diag",
+              "texte": "Proposer un talisman de protection, en pariant sur une présence surnaturelle.",
+              "consequence": { "type": "fin_mission", "issue": "succes_total_chance", "produit_requis_id": "talisman_protection", "commentaire": "Un bon choix si la menace est effectivement spirituelle, sinon gaspillage de ressources nobles." }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "id": "demande_potion_amour",
+      "nom": "Un cœur brisé",
+      "couche": 1,
+      "secteurs_concernes": ["potions", "divination"],
+      "intro": {
+        "texte": "Une jeune femme entre, l'air abattu. \"On m'a dit que vous pouviez préparer des philtres... j'aimerais que quelqu'un m'aime enfin.\"",
+        "options": [
+          {
+            "id": "divination_coeur",
+            "texte": "Faire une lecture pour comprendre ce qui se cache vraiment derrière la demande.",
+            "requiert_secteur_debloque": "divination",
+            "consequence": { "type": "lancer_divination", "noeud_succes": "diagnostic_coeur_correct", "noeud_echec": "diagnostic_coeur_incorrect" }
+          },
+          {
+            "id": "vendre_directement",
+            "texte": "Lui vendre directement une potion d'amour, sans poser de questions.",
+            "consequence": { "type": "fin_mission", "issue": "succes_partiel", "produit_requis_id": "potion_amour", "commentaire": "Fonctionne à court terme, mais l'éthique de la chose pourrait revenir vous hanter (effet narratif futur)." }
+          }
+        ]
+      },
+      "noeuds": {
+        "diagnostic_coeur_correct": {
+          "texte": "La lecture révèle que la cliente ne manque pas d'amour véritable autour d'elle, mais ne s'en rend pas compte — une potion de confiance en soi serait bien plus utile qu'une potion d'amour.",
+          "options": [
+            {
+              "id": "proposer_elixir_force_confiance",
+              "texte": "Lui suggérer honnêtement qu'un élixir de force/confiance serait plus approprié.",
+              "consequence": { "type": "fin_mission", "issue": "succes_total", "produit_requis_id": "elixir_force", "commentaire": "Bonus de réputation pour l'honnêteté du diagnostic." }
+            },
+            {
+              "id": "vendre_potion_amour_quand_meme",
+              "texte": "Lui vendre la potion d'amour qu'elle demandait, malgré le diagnostic.",
+              "consequence": { "type": "fin_mission", "issue": "succes_court_terme", "produit_requis_id": "potion_amour" }
+            }
+          ]
+        },
+        "diagnostic_coeur_incorrect": {
+          "texte": "La lecture, erronée, semble confirmer un manque d'amour véritable.",
+          "options": [
+            {
+              "id": "vendre_potion_amour_diag_errone",
+              "texte": "Vendre la potion d'amour, confiant dans le diagnostic.",
+              "consequence": { "type": "fin_mission", "issue": "succes_partiel", "produit_requis_id": "potion_amour" }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

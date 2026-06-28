@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Sorcier Tycoon</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="stat">💰 <span id="money">0</span></div>
+  <div class="stat">⭐ <span id="reputation">0</span>/100</div>
+  <div class="stat">🕒 Jour <span id="day">1</span> — <span id="clock">00:00</span></div>
+  <div class="speed-controls">
+    <button data-speed="1">x1</button>
+    <button data-speed="2">x2</button>
+    <button data-speed="4">x4</button>
+    <button id="pauseBtn">⏸</button>
+  </div>
+</header>
+
+<main id="layout">
+  <section id="lab" class="panel">
+    <h2>Laboratoire de potions</h2>
+    <div id="recipes"></div>
+  </section>
+
+  <section id="employees" class="panel">
+    <h2>Employés</h2>
+    <div id="employee-list"></div>
+    <h3>Recrutement</h3>
+    <div id="recruit-list"></div>
+  </section>
+
+  <section id="harvest" class="panel">
+    <h2>Missions de récolte</h2>
+    <div id="harvest-list"></div>
+    <h3>En cours</h3>
+    <div id="harvest-active"></div>
+  </section>
+
+  <section id="market" class="panel">
+    <h2>Marché &amp; Inventaire</h2>
+    <div id="market-list"></div>
+    <h3>Stock</h3>
+    <div id="inventory-list"></div>
+  </section>
+
+  <section id="log" class="panel">
+    <h2>Journal</h2>
+    <div id="log-list"></div>
+  </section>
+</main>
+
+<div id="client-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="client-title"></h2>
+    <p id="client-text"></p>
+    <div id="client-options"></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

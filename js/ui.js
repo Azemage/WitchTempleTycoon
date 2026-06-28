@@ -1,0 +1,228 @@
+import {
+  activeRecipes, activeDestinations, activeGrades,
+  startProduction, sellProduct, buyIngredient, hireEmployee, startHarvest,
+  availableOptions, currentClientNode, chooseClientOption,
+} from './engine.js';
+import { isEmployeeFree } from './state.js';
+
+function el(tag, cls, html) {
+  const e = document.createElement('div');
+  if (tag) e.className = cls || '';
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function freeEmployeeOptions(state, secteurId) {
+  return state.employees.filter((e) => isEmployeeFree(e));
+}
+
+export function render(state) {
+  document.getElementById('money').textContent = Math.floor(state.money);
+  document.getElementById('reputation').textContent = Math.round(state.reputation);
+
+  const eco = state.data.economie.temps;
+  const dayLen = eco.duree_jour_secondes;
+  const day = Math.floor(state.timeSeconds / dayLen) + 1;
+  const secIntoDay = state.timeSeconds % dayLen;
+  const hh = String(Math.floor((secIntoDay / dayLen) * 24)).padStart(2, '0');
+  const mm = String(Math.floor(((secIntoDay / dayLen) * 24 * 60) % 60)).padStart(2, '0');
+  document.getElementById('day').textContent = day;
+  document.getElementById('clock').textContent = `${hh}:${mm}`;
+
+  document.querySelectorAll('[data-speed]').forEach((btn) => {
+    btn.classList.toggle('active-speed', Number(btn.dataset.speed) === state.speed && !state.paused);
+  });
+  document.getElementById('pauseBtn').textContent = state.paused ? '▶' : '⏸';
+
+  renderRecipes(state);
+  renderEmployees(state);
+  renderHarvest(state);
+  renderMarket(state);
+  renderLog(state);
+  renderClientModal(state);
+}
+
+function renderRecipes(state) {
+  const root = document.getElementById('recipes');
+  root.innerHTML = '';
+  const freeEmployees = freeEmployeeOptions(state);
+  activeRecipes(state).forEach((recipe) => {
+    const card = el('div', 'card');
+    const ingredientsTxt = recipe.ingredients_requis
+      .map((r) => `${r.quantite}x ${state.data.ingredients.ingredients.find((i) => i.id === r.ingredient_id)?.nom}`)
+      .join(', ');
+    const have = (state.products || {})[recipe.id] || 0;
+
+    card.innerHTML = `
+      <div class="card-row">
+        <span class="card-title">${recipe.nom}</span>
+        <span class="muted">vente ${recipe.prix_vente_base}p · stock ${have}</span>
+      </div>
+      <div class="muted">Besoin : ${ingredientsTxt}</div>
+      <div>${recipe.tags_ambiance.map((t) => `<span class="tag">${t}</span>`).join('')}</div>
+    `;
+
+    const row = el('div', 'card-row');
+    const select = document.createElement('select');
+    freeEmployees.forEach((emp) => {
+      const opt = document.createElement('option');
+      opt.value = emp.id;
+      opt.textContent = `${emp.nom} (q${emp.qualite.toFixed(1)})`;
+      select.appendChild(opt);
+    });
+    const craftBtn = document.createElement('button');
+    craftBtn.textContent = 'Produire';
+    craftBtn.disabled = freeEmployees.length === 0;
+    craftBtn.onclick = () => { startProduction(state, recipe.id, select.value); render(state); };
+
+    const sellBtn = document.createElement('button');
+    sellBtn.textContent = 'Vendre 1';
+    sellBtn.disabled = have === 0;
+    sellBtn.onclick = () => { sellProduct(state, recipe.id, 1); render(state); };
+
+    row.append(select, craftBtn, sellBtn);
+    card.appendChild(row);
+    root.appendChild(card);
+  });
+
+  document.querySelectorAll('#prod-jobs').forEach((n) => n.remove());
+  if (state.productionJobs.length) {
+    const jobsBox = el('div', '', '<h3>En production</h3>');
+    jobsBox.id = 'prod-jobs';
+    state.productionJobs.forEach((job) => {
+      const recipe = state.data.recettes.recettes.find((r) => r.id === job.recipeId);
+      const emp = state.employees.find((e) => e.id === job.employeeId);
+      const pct = Math.min(100, ((state.timeSeconds - job.startedAt) / (job.endsAt - job.startedAt)) * 100);
+      const card = el('div', 'card', `
+        <div class="card-row"><span>${recipe.nom}</span><span class="muted">${emp?.nom}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      `);
+      jobsBox.appendChild(card);
+    });
+    document.getElementById('recipes').appendChild(jobsBox);
+  }
+}
+
+function renderEmployees(state) {
+  const list = document.getElementById('employee-list');
+  list.innerHTML = '';
+  state.employees.forEach((emp) => {
+    const status = emp.isPlayer ? '' : emp.busy
+      ? (emp.busy.type === 'recovery' ? '🩹 en convalescence' : '⏳ occupé')
+      : '✅ disponible';
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">${emp.nom}</span><span class="muted">qualité ${emp.qualite.toFixed(1)}</span></div>
+      <div class="muted">${emp.specialite_id || 'sorcier polyvalent'} ${status}</div>
+    `);
+    list.appendChild(card);
+  });
+
+  const recruit = document.getElementById('recruit-list');
+  recruit.innerHTML = '';
+  activeGrades(state).forEach((grade) => {
+    const card = el('div', 'card', `
+      <div class="card-row">
+        <span class="card-title">${grade.nom}</span>
+        <span class="muted">coût ${grade.cout_recrutement}p · salaire ${grade.salaire_base}p/j</span>
+      </div>
+      <div class="muted">Qualité de départ ${grade.qualite_depart_min}–${grade.qualite_depart_max}</div>
+    `);
+    const btn = document.createElement('button');
+    btn.textContent = 'Embaucher';
+    btn.disabled = state.money < grade.cout_recrutement;
+    btn.onclick = () => { hireEmployee(state, grade.id); render(state); };
+    card.appendChild(btn);
+    recruit.appendChild(card);
+  });
+}
+
+function renderHarvest(state) {
+  const root = document.getElementById('harvest-list');
+  root.innerHTML = '';
+  const freeEmployees = freeEmployeeOptions(state);
+  activeDestinations(state).forEach((dest) => {
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">${dest.nom}</span><span class="muted">${dest.duree_secondes}s</span></div>
+      <div class="muted">${dest.description}</div>
+    `);
+    const row = el('div', 'card-row');
+    const select = document.createElement('select');
+    freeEmployees.forEach((emp) => {
+      const opt = document.createElement('option');
+      opt.value = emp.id;
+      opt.textContent = `${emp.nom} (q${emp.qualite.toFixed(1)})`;
+      select.appendChild(opt);
+    });
+    const sendBtn = document.createElement('button');
+    sendBtn.textContent = 'Envoyer';
+    sendBtn.disabled = freeEmployees.length === 0;
+    sendBtn.onclick = () => { startHarvest(state, dest.id, select.value); render(state); };
+    row.append(select, sendBtn);
+    card.appendChild(row);
+    root.appendChild(card);
+  });
+
+  const active = document.getElementById('harvest-active');
+  active.innerHTML = '';
+  state.harvestJobs.forEach((job) => {
+    const dest = state.data.missions_recolte.destinations.find((d) => d.id === job.destinationId);
+    const emp = state.employees.find((e) => e.id === job.employeeId);
+    const pct = Math.min(100, ((state.timeSeconds - job.startedAt) / (job.endsAt - job.startedAt)) * 100);
+    const card = el('div', 'card', `
+      <div class="card-row"><span>${dest.nom}</span><span class="muted">${emp?.nom}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    `);
+    active.appendChild(card);
+  });
+}
+
+function renderMarket(state) {
+  const root = document.getElementById('market-list');
+  root.innerHTML = '';
+  state.data.ingredients.ingredients
+    .filter((i) => (i.couche ?? 1) <= 1 && i.sources.includes('marche'))
+    .forEach((ing) => {
+      const card = el('div', 'card-row', `<span>${ing.nom}</span><span class="muted">${ing.prix_marche_unitaire}p</span>`);
+      const btn = document.createElement('button');
+      btn.textContent = 'Acheter x1';
+      btn.disabled = state.money < ing.prix_marche_unitaire;
+      btn.onclick = () => { buyIngredient(state, ing.id, 1); render(state); };
+      card.appendChild(btn);
+      root.appendChild(card);
+    });
+
+  const inv = document.getElementById('inventory-list');
+  inv.innerHTML = '';
+  const entries = Object.entries(state.inventory).filter(([, qty]) => qty > 0);
+  if (entries.length === 0) inv.innerHTML = '<div class="muted">Stock vide.</div>';
+  entries.forEach(([id, qty]) => {
+    const ing = state.data.ingredients.ingredients.find((i) => i.id === id);
+    inv.appendChild(el('div', 'card-row', `<span>${ing?.nom || id}</span><span class="muted">x${qty}</span>`));
+  });
+}
+
+function renderLog(state) {
+  const root = document.getElementById('log-list');
+  root.innerHTML = '';
+  state.log.slice(-50).forEach((line) => root.appendChild(el('div', '', line)));
+}
+
+function renderClientModal(state) {
+  const modal = document.getElementById('client-modal');
+  if (!state.pendingClient) { modal.classList.add('hidden'); return; }
+  modal.classList.remove('hidden');
+
+  document.getElementById('client-title').textContent = state.pendingClient.missionDef.nom;
+  const node = currentClientNode(state);
+  document.getElementById('client-text').textContent = node.texte;
+
+  const optionsRoot = document.getElementById('client-options');
+  optionsRoot.innerHTML = '';
+  availableOptions(state).forEach((opt) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt.texte;
+    btn.onclick = () => { chooseClientOption(state, opt); render(state); };
+    optionsRoot.appendChild(btn);
+  });
+}

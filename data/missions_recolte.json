@@ -1,0 +1,84 @@
+{
+  "_description": "Missions d'envoi d'assistant pour récolter des ingrédients. Pas de carte explorable en V1 : on choisit une destination, on assigne un employé, on attend une durée, on reçoit un rapport de mission. Une carte réelle pourra remplacer ce système en couche 5+.",
+
+  "regles_mission": {
+    "_description": "Une mission a une durée fixe, un risque de base, et une table de butin. La qualité de l'employé envoyé influence le risque et la quantité de butin.",
+    "formule_risque_reel": "risque_reel = clamp(risque_base - (qualite_employe - 5) * 0.04, 0.02, 0.9)",
+    "formule_quantite_butin": "quantite_obtenue = quantite_base_table_butin * (1 + (qualite_employe - 5) * 0.08)",
+    "issues_possibles": ["succes_total", "succes_partiel", "echec_sans_perte", "echec_avec_incident"],
+    "commentaire_incident": "Un échec avec incident peut blesser l'employé (indisponible un certain temps) ou causer un petit événement narratif déclenchant une mission cliente improvisée (couche 2+)."
+  },
+
+  "destinations": [
+    {
+      "id": "foret_proche",
+      "nom": "Forêt proche",
+      "couche": 1,
+      "duree_secondes": 90,
+      "risque_base": 0.1,
+      "description": "Une forêt à quelques heures de marche du temple. Sûre, peu d'imprévus.",
+      "table_butin": [
+        { "ingredient_id": "herbes_communes", "quantite_base": 3, "probabilite": 0.9 },
+        { "ingredient_id": "racine_seche", "quantite_base": 1, "probabilite": 0.5 },
+        { "ingredient_id": "bois_sacre", "quantite_base": 1, "probabilite": 0.3 },
+        { "ingredient_id": "os_petit_animal", "quantite_base": 1, "probabilite": 0.4 }
+      ]
+    },
+    {
+      "id": "cotes_battues",
+      "nom": "Côtes battues",
+      "couche": 1,
+      "duree_secondes": 150,
+      "risque_base": 0.2,
+      "description": "Falaises et plages exposées aux tempêtes. Le sel noir s'y forme naturellement, mais le terrain est traître.",
+      "table_butin": [
+        { "ingredient_id": "sel_noir", "quantite_base": 2, "probabilite": 0.7 }
+      ]
+    },
+    {
+      "id": "montagne_volcanique",
+      "nom": "Montagne volcanique",
+      "couche": 2,
+      "duree_secondes": 240,
+      "risque_base": 0.35,
+      "description": "Zone instable, chaleur intense. Riche en cristaux et obsidienne, mais dangereuse.",
+      "table_butin": [
+        { "ingredient_id": "obsidienne", "quantite_base": 2, "probabilite": 0.6 },
+        { "ingredient_id": "cristal_focalisation", "quantite_base": 1, "probabilite": 0.35 },
+        { "ingredient_id": "larme_phenix", "quantite_base": 1, "probabilite": 0.05 }
+      ]
+    },
+    {
+      "id": "cimetiere_oublie",
+      "nom": "Cimetière oublié",
+      "couche": 2,
+      "duree_secondes": 180,
+      "risque_base": 0.3,
+      "description": "Vieux cimetière à la réputation trouble. Bon endroit pour l'encre spectrale et les plumes de corbeau, mais des présences y rôdent.",
+      "table_butin": [
+        { "ingredient_id": "encre_spectrale", "quantite_base": 2, "probabilite": 0.65 },
+        { "ingredient_id": "plume_corbeau", "quantite_base": 1, "probabilite": 0.5 }
+      ]
+    }
+  ],
+
+  "messages_rapport": {
+    "_description": "Pools de textes de rapport tirés aléatoirement selon l'issue, pour varier la narration sans devoir tout scripter. Claude Code peut piocher dedans selon l'issue obtenue.",
+    "succes_total": [
+      "{employe} est revenu(e) chargé(e) sans le moindre souci.",
+      "Mission exemplaire : {employe} a même trouvé un peu plus que prévu."
+    ],
+    "succes_partiel": [
+      "{employe} est revenu(e) avec moins que prévu, la zone était plus pauvre que d'habitude.",
+      "{employe} a dû rebrousser chemin plus tôt que prévu, mais rapporte tout de même quelque chose."
+    ],
+    "echec_sans_perte": [
+      "{employe} est revenu(e) bredouille, rien à signaler.",
+      "Aucune trouvaille cette fois-ci, {employe} n'a rien rapporté."
+    ],
+    "echec_avec_incident": [
+      "{employe} est revenu(e) blessé(e), du repos sera nécessaire.",
+      "Quelque chose a suivi {employe} jusqu'au temple..."
+    ]
+  }
+}

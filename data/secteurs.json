@@ -1,0 +1,85 @@
+{
+  "_description": "Secteurs de spécialisation du temple. Chaque secteur regroupe des recettes, des employés spécialisés, et un type de salle privilégié. Le champ 'couche' indique à partir de quand ce secteur est jouable.",
+  "secteurs": [
+    {
+      "id": "potions",
+      "nom": "Potions",
+      "couche": 1,
+      "description": "Préparation de breuvages, philtres et concoctions à partir d'ingrédients bouillis, infusés ou distillés.",
+      "salle_privilegiee_id": "laboratoire_potions",
+      "couleur_theme": "#6b3fa0",
+      "exemples_usage": [
+        "philtre de soin",
+        "potion d'amour",
+        "poison",
+        "élixir de force"
+      ]
+    },
+    {
+      "id": "sorts",
+      "nom": "Sorts",
+      "couche": 2,
+      "description": "Incantations et formules à apprendre, mémoriser, puis lancer. Production = inscription du sort dans un grimoire ou un parchemin prêt à l'emploi.",
+      "salle_privilegiee_id": "bibliotheque_sorts",
+      "couleur_theme": "#3f6fa0",
+      "exemples_usage": [
+        "sort de protection",
+        "sort de soin",
+        "sort d'attaque",
+        "sort de détection"
+      ]
+    },
+    {
+      "id": "baguettes",
+      "nom": "Baguettes magiques",
+      "couche": 2,
+      "description": "Fabrication d'objets canalisateurs : baguettes, bâtons, focus magiques. Travail du bois, des cristaux, des matériaux conducteurs de magie.",
+      "salle_privilegiee_id": "atelier_artisanat",
+      "couleur_theme": "#a07a3f",
+      "exemples_usage": [
+        "baguette débutant",
+        "baguette de duel",
+        "bâton de cérémonie"
+      ]
+    },
+    {
+      "id": "talismans",
+      "nom": "Talismans et amulettes",
+      "couche": 2,
+      "description": "Objets porte-bonheur ou de protection passive, fabriqués à partir de matériaux chargés (pierres, métaux, ossements) et d'un rituel de charge.",
+      "salle_privilegiee_id": "atelier_artisanat",
+      "couleur_theme": "#3fa070",
+      "exemples_usage": [
+        "talisman de protection",
+        "amulette de chance",
+        "pendentif anti-malédiction"
+      ]
+    },
+    {
+      "id": "divination",
+      "nom": "Divination",
+      "couche": 2,
+      "description": "Lecture de signes, augure, diagnostic magique. Sert à la fois de service vendable et de mécanique transversale pour diagnostiquer les besoins des clients dans toutes les missions narratives.",
+      "salle_privilegiee_id": "chambre_divination",
+      "couleur_theme": "#a03f6f",
+      "exemples_usage": [
+        "lecture de tarot",
+        "diagnostic de malédiction",
+        "prédiction"
+      ]
+    },
+    {
+      "id": "rituels",
+      "nom": "Rituels",
+      "couche": 4,
+      "description": "Cérémonies complexes nécessitant plusieurs employés simultanément, des ingrédients rares, et souvent une salle dédiée bien décorée. Hauts risques, hautes récompenses.",
+      "salle_privilegiee_id": "cercle_rituel",
+      "couleur_theme": "#7a3fa0",
+      "exemples_usage": [
+        "rituel de purification",
+        "rituel d'invocation mineure",
+        "rituel de lien"
+      ]
+    }
+  ]
+}

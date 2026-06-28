@@ -1,0 +1,54 @@
+{
+  "_description": "Paramètres globaux de l'économie et du rythme du jeu. Pensé pour être facilement réajustable sans toucher au code (équilibrage = éditer ce fichier).",
+
+  "demarrage": {
+    "argent_depart": 150,
+    "secteur_debloque_depart": ["potions"],
+    "salle_depart_id": "laboratoire_potions",
+    "employes_depart": 0,
+    "commentaire": "Le joueur démarre seul, avec son sorcier, un laboratoire de potions, et doit construire le reste."
+  },
+
+  "temps": {
+    "duree_jour_secondes": 600,
+    "commentaire": "Un 'jour' in-game dure 10 minutes réelles en vitesse normale. Sert de référence pour les salaires (payés par jour) et les statistiques.",
+    "vitesses_disponibles": [1, 2, 4],
+    "pause_automatique_sur_evenement_client": true
+  },
+
+  "reputation": {
+    "valeur_min": 0,
+    "valeur_max": 100,
+    "valeur_depart": 20,
+    "effet_sur_frequence_clients": {
+      "formule": "intervalle_moyen_apparition_client_secondes = clamp(180 - reputation * 1.2, 30, 180)",
+      "commentaire": "Plus la réputation est haute, plus les clients arrivent souvent."
+    },
+    "effet_sur_type_clients": {
+      "commentaire": "Couche 2+. Réputation basse = clients simples/peu exigeants. Réputation haute = clients prestigieux, demandes plus complexes et plus rémunératrices, mais aussi plus de risques en cas d'échec."
+    },
+    "gains": {
+      "succes_total": 3,
+      "succes_partiel": 1,
+      "succes_chance": 1,
+      "echec_diagnostic_errone": -4,
+      "echec_sans_consequence": -1
+    }
+  },
+
+  "salaires": {
+    "frequence_paiement": "quotidien",
+    "commentaire": "Montants de base définis par grade dans employes.json (champ salaire_base). Modificateurs additionnels possibles ici si besoin d'équilibrage global.",
+    "multiplicateur_global": 1.0
+  },
+
+  "marche": {
+    "fluctuation_prix_active": false,
+    "couche_fluctuation_prix": 4,
+    "commentaire": "En V1 (couches 1-3), les prix du marché sont fixes (voir ingredients.json). La fluctuation dynamique de prix est une amélioration de couche 4+."
+  },
+
+  "construction": {
+    "commentaire": "Coûts de construction des salles définis dans salles.json. Pas de paramètre global supplémentaire pour l'instant."
+  }
+}

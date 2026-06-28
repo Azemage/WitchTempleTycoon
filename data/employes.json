@@ -1,0 +1,84 @@
+{
+  "_description": "Types de magiciens recrutables. Spécialité fixe à l'embauche, qualité qui évolue lentement avec le temps/l'expérience selon les règles de 'progression_qualite' ci-dessous.",
+
+  "regles_progression_qualite": {
+    "_description": "La qualité d'un employé évolue dans une fourchette bornée autour de sa valeur de départ. Ce n'est pas un système de niveaux/XP : pas de palier, pas de montée de niveau visible, juste un glissement progressif borné par tâche réussie dans son secteur de spécialité.",
+    "qualite_min": 1,
+    "qualite_max": 10,
+    "gain_par_tache_reussie_dans_specialite": 0.05,
+    "perte_par_tache_ratee_dans_specialite": 0.02,
+    "gain_par_tache_hors_specialite": 0.0,
+    "commentaire": "Hors spécialité, un employé peut quand même exécuter une recette d'un autre secteur, mais avec un malus de production et sans progression de qualité."
+  },
+
+  "specialites": [
+    { "id": "potionniste", "secteur_id": "potions", "couche": 1 },
+    { "id": "incantateur", "secteur_id": "sorts", "couche": 2 },
+    { "id": "artisan_baguettes", "secteur_id": "baguettes", "couche": 2 },
+    { "id": "artisan_talismans", "secteur_id": "talismans", "couche": 2 },
+    { "id": "devin", "secteur_id": "divination", "couche": 2 },
+    { "id": "ritualiste", "secteur_id": "rituels", "couche": 4 }
+  ],
+
+  "traits_personnalite": {
+    "_description": "Optionnel, couche 4+. Modificateurs additionnels indépendants de la qualité, pour donner du caractère aux employés sans complexifier le système de base avant que le noyau soit solide.",
+    "couche": 4,
+    "exemples": [
+      {
+        "id": "meticuleux",
+        "effet": "Vitesse de production -10%, qualité produite +10%"
+      },
+      {
+        "id": "rapide",
+        "effet": "Vitesse de production +15%, qualité produite -5%"
+      },
+      {
+        "id": "sociable",
+        "effet": "Meilleur résultat dans les missions clients nécessitant du dialogue"
+      },
+      {
+        "id": "casanier",
+        "effet": "Refuse ou performe moins bien en mission de récolte extérieure"
+      }
+    ]
+  },
+
+  "grades_recrutement": [
+    {
+      "id": "apprenti",
+      "couche": 1,
+      "nom": "Apprenti",
+      "qualite_depart_min": 1,
+      "qualite_depart_max": 3,
+      "salaire_base": 10,
+      "cout_recrutement": 0,
+      "commentaire": "Premier niveau d'embauche, bon marché, faible qualité de départ."
+    },
+    {
+      "id": "compagnon",
+      "couche": 1,
+      "nom": "Compagnon",
+      "qualite_depart_min": 4,
+      "qualite_depart_max": 6,
+      "salaire_base": 25,
+      "cout_recrutement": 50,
+      "commentaire": "Déjà formé ailleurs, qualité moyenne garantie."
+    },
+    {
+      "id": "maitre",
+      "couche": 2,
+      "nom": "Maître",
+      "qualite_depart_min": 7,
+      "qualite_depart_max": 9,
+      "salaire_base": 60,
+      "cout_recrutement": 200,
+      "commentaire": "Rare sur le marché du recrutement, coûteux mais quasi expert d'entrée."
+    }
+  ],
+
+  "employe_joueur": {
+    "_description": "Le sorcier incarné par le joueur. Pas une spécialité unique : qualité de départ moyenne dans tous les secteurs déverrouillés, peut travailler partout sans malus hors-spécialité (contrairement aux employés).",
+    "qualite_depart_tous_secteurs": 5,
+    "progression": "identique aux employés, mais sans malus hors-spécialité"
+  }
+}

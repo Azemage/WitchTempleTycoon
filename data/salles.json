@@ -1,0 +1,83 @@
+{
+  "_description": "Types de salles constructibles. La taille (cases au sol) et le nombre de slots de décoration sont fixes et prédéterminés à la construction. Le joueur ne choisit PAS la forme : il choisit le type de salle, puis la décore librement avec des objets (voir objets_decoration.json).",
+
+  "regles_ambiance": {
+    "_description": "Chaque objet posé dans une salle a une liste de tags_ambiance avec un poids. L'ambiance dominante d'une salle = le(s) tag(s) avec le score cumulé le plus haut parmi tous les objets posés. Une recette produite dans cette salle dont les tags_ambiance recoupent l'ambiance dominante reçoit un bonus.",
+    "formule_score_tag": "score_tag = somme(poids_objet pour chaque objet posé ayant ce tag)",
+    "seuil_ambiance_dominante": "le tag devient 'dominant' s'il dépasse 'seuil_dominance' points cumulés",
+    "seuil_dominance": 5,
+    "bonus_par_tag_correspondant": {
+      "bonus_qualite": 1,
+      "bonus_vitesse_pourcent": 10
+    },
+    "max_tags_dominants_simultanes": 2,
+    "commentaire_exemple": "Une salle avec plusieurs objets 'séduction' devient une salle à ambiance séduction dominante : toute recette ayant le tag 'seduction' (ex: potion d'amour) y gagne un bonus de qualité et de vitesse. Une recette de poison (tags tenebres/discretion) n'y gagnerait rien."
+  },
+
+  "types_salles": [
+    {
+      "id": "laboratoire_potions",
+      "nom": "Laboratoire de potions",
+      "couche": 1,
+      "secteur_associe_id": "potions",
+      "cases_sol": { "largeur": 4, "hauteur": 3 },
+      "slots_decoration": 6,
+      "cout_construction": 100,
+      "commentaire": "Salle de départ du jeu, déjà existante en couche 1 sans décoration."
+    },
+    {
+      "id": "bibliotheque_sorts",
+      "nom": "Bibliothèque des sorts",
+      "couche": 2,
+      "secteur_associe_id": "sorts",
+      "cases_sol": { "largeur": 4, "hauteur": 4 },
+      "slots_decoration": 8,
+      "cout_construction": 250
+    },
+    {
+      "id": "atelier_artisanat",
+      "nom": "Atelier d'artisanat",
+      "couche": 2,
+      "secteur_associe_id": "baguettes",
+      "cases_sol": { "largeur": 5, "hauteur": 3 },
+      "slots_decoration": 7,
+      "cout_construction": 220,
+      "commentaire": "Sert à la fois baguettes et talismans, deux secteurs liés à l'artisanat manuel."
+    },
+    {
+      "id": "chambre_divination",
+      "nom": "Chambre de divination",
+      "couche": 2,
+      "secteur_associe_id": "divination",
+      "cases_sol": { "largeur": 3, "hauteur": 3 },
+      "slots_decoration": 5,
+      "cout_construction": 180
+    },
+    {
+      "id": "salle_generique",
+      "nom": "Salle polyvalente",
+      "couche": 1,
+      "secteur_associe_id": null,
+      "cases_sol": { "largeur": 3, "hauteur": 3 },
+      "slots_decoration": 4,
+      "cout_construction": 60,
+      "commentaire": "Aucun secteur associé, aucun bonus de spécialisation. Peut accueillir n'importe quelle production avec un malus, ou servir de salle de stockage/repos."
+    },
+    {
+      "id": "cercle_rituel",
+      "nom": "Cercle de rituel",
+      "couche": 4,
+      "secteur_associe_id": "rituels",
+      "cases_sol": { "largeur": 6, "hauteur": 6 },
+      "slots_decoration": 12,
+      "cout_construction": 600,
+      "commentaire": "Grande salle, nécessaire pour les rituels à plusieurs employés simultanés."
+    }
+  ],
+
+  "malus_hors_salle_specialisee": {
+    "_description": "Si une recette d'un secteur X est produite dans une salle dont le secteur_associe_id n'est pas X (ex: potion produite en salle_generique), malus appliqué.",
+    "malus_qualite": -2,
+    "malus_vitesse_pourcent": -20
+  }
+}
