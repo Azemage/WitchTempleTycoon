@@ -9,6 +9,14 @@ import {
 import { isEmployeeFree } from './state.js';
 import { COUCHE_ACTIVE, byCouche } from './data.js';
 
+export function focusPanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  panel.classList.add('panel-flash');
+  setTimeout(() => panel.classList.remove('panel-flash'), 1200);
+}
+
 function el(tag, cls, html) {
   const e = document.createElement('div');
   if (tag) e.className = cls || '';

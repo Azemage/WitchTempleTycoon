@@ -19,6 +19,12 @@
 </header>
 
 <main id="layout">
+  <section id="temple" class="panel" style="grid-column: 1 / -1;">
+    <h2>Le Temple</h2>
+    <div class="muted">Déplacez-vous avec les flèches / WASD, appuyez sur E près d'une station pour l'ouvrir.</div>
+    <div id="temple-canvas"></div>
+  </section>
+
   <section id="lab" class="panel">
     <h2>Laboratoire de potions</h2>
     <div id="recipes"></div>
@@ -71,6 +77,7 @@
   </div>
 </div>
 
+<script src="js/vendor/phaser.min.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -1,12 +1,18 @@
 import { loadData } from './data.js';
 import { createInitialState, addLog } from './state.js';
 import { tick, dailySalaries } from './engine.js';
-import { render } from './ui.js';
+import { render, focusPanel } from './ui.js';
+import { initTemple } from './templeScene.js';
 
 async function main() {
   const data = await loadData();
   const state = createInitialState(data);
   addLog(state, 'Bienvenue dans votre temple. Le laboratoire de potions vous attend.');
+
+  initTemple(state, {
+    onInteract: () => focusPanel('lab'),
+    onMarket: () => focusPanel('market'),
+  });
 
   let lastPaidDay = 0;
   const dayLen = data.economie.temps.duree_jour_secondes;

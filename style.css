@@ -60,6 +60,10 @@ button.active-speed { outline: 2px solid #fff; }
 .panel h2 { margin-top: 0; color: #d9b8ff; font-size: 1.15em; }
 .panel h3 { color: var(--muted); font-size: 0.95em; margin-bottom: 6px; }
 
+#temple-canvas { border-radius: 6px; overflow: hidden; line-height: 0; }
+#temple-canvas canvas { display: block; image-rendering: pixelated; }
+.panel-flash { outline: 2px solid #d9b8ff; box-shadow: 0 0 14px #8455c4; }
+
 #log { grid-column: 1 / -1; max-height: 220px; overflow-y: auto; }
 #log-list { font-size: 0.9em; color: var(--muted); display: flex; flex-direction: column-reverse; gap: 2px; }
 
