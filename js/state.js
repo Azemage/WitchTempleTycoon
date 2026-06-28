@@ -27,6 +27,9 @@ export function createInitialState(data) {
     ],
 
     inventory: {},
+    playerInventory: {},
+    playerEquipment: { amulette: null },
+    playerSkills: {},
 
     rooms: [
       { id: 'room_start', typeId: eco.demarrage.salle_depart_id, objects: [] },
@@ -73,4 +76,22 @@ export function removeItem(state, ingredientId, qty) {
 
 export function hasItems(state, requis) {
   return requis.every((r) => (state.inventory[r.ingredient_id] || 0) >= r.quantite);
+}
+
+export function addPersonalItem(state, itemId, qty = 1) {
+  state.playerInventory[itemId] = (state.playerInventory[itemId] || 0) + qty;
+}
+
+export function gainSkillXp(state, skillId, amount, label) {
+  const skill = state.playerSkills[skillId] || { level: 1, xp: 0 };
+  state.playerSkills[skillId] = skill;
+  skill.xp += amount;
+  const seuil = skill.level * 100;
+  if (skill.xp >= seuil) {
+    skill.xp -= seuil;
+    skill.level += 1;
+    const player = getEmployee(state, 'player');
+    if (player) player.qualite = Math.min(10, player.qualite + 0.3);
+    addLog(state, `📈 Compétence "${label || skillId}" niveau ${skill.level} ! (+0.3 qualité personnelle)`);
+  }
 }

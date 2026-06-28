@@ -1,10 +1,47 @@
 import { byCouche } from './data.js';
 import {
   addLog, addItem, removeItem, hasItems, getEmployee, isEmployeeFree,
-  rollNextClientTime,
+  rollNextClientTime, addPersonalItem, gainSkillXp,
 } from './state.js';
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+const PERSONAL_ITEMS = [
+  { id: 'amulette_lune', nom: 'Amulette de lune', description: 'Trouvée en récolte. Aiguise la concentration.', bonusQualite: 0.4 },
+  { id: 'grimoire_use', nom: 'Grimoire usé', description: 'Notes de sorciers anciens, glanées en chemin.', bonusQualite: 0.2 },
+  { id: 'breloque_chance', nom: 'Breloque de chance', description: 'Un porte-bonheur récupéré en exploration.', bonusQualite: 0.3 },
+];
+
+export function personalItems() {
+  return PERSONAL_ITEMS;
+}
+
+export function equipItem(state, itemId) {
+  if (!state.playerInventory[itemId]) return false;
+  state.playerEquipment.amulette = itemId;
+  addLog(state, `✨ ${PERSONAL_ITEMS.find((i) => i.id === itemId)?.nom} équipé.`);
+  return true;
+}
+
+export function unequipItem(state) {
+  state.playerEquipment.amulette = null;
+  return true;
+}
+
+export function playerEquipmentBonus(state) {
+  const item = PERSONAL_ITEMS.find((i) => i.id === state.playerEquipment?.amulette);
+  return item ? item.bonusQualite : 0;
+}
+
+function effectiveQualite(state, emp) {
+  return emp.qualite + (emp.isPlayer ? playerEquipmentBonus(state) : 0);
+}
+
+export function playerSkillProgress(state) {
+  return Object.entries(state.playerSkills).map(([id, skill]) => ({
+    id, ...skill, seuil: skill.level * 100,
+  }));
+}
 
 export function activeRecipes(state) {
   return byCouche(state.data.recettes.recettes).filter((r) =>
@@ -152,7 +189,7 @@ export function startProduction(state, recipeId, employeeIds, roomId) {
 
   recipe.ingredients_requis.forEach((r) => removeItem(state, r.ingredient_id, r.quantite));
 
-  const qualiteMoyenne = emps.reduce((s, e) => s + e.qualite, 0) / emps.length;
+  const qualiteMoyenne = emps.reduce((s, e) => s + effectiveQualite(state, e), 0) / emps.length;
   const { vitessePct } = roomModifiers(state, room, recipe);
   const vitesseEquipe = emps.reduce((s, e) => s + vitesseMultiplicateur(e, recipe), 0) / emps.length;
   const tempsReel = recipe.temps_base_secondes
@@ -181,7 +218,7 @@ function finishProduction(state, job) {
 
   const regles = state.data.employes.regles_progression_qualite;
   const malusMoyen = emps.reduce((s, e) => s + malusHorsSpecialite(e, recipe), 0) / emps.length;
-  const qualiteMoyenne = emps.reduce((s, e) => s + e.qualite, 0) / emps.length;
+  const qualiteMoyenne = emps.reduce((s, e) => s + effectiveQualite(state, e), 0) / emps.length;
   const { qualiteDelta } = room ? roomModifiers(state, room, recipe) : { qualiteDelta: 0 };
   const qualiteResultat = clamp(qualiteMoyenne - malusMoyen + qualiteDelta, 1, 10);
   const succes = qualiteResultat >= recipe.seuil_reussite_min;
@@ -195,6 +232,10 @@ function finishProduction(state, job) {
         emp.qualite = clamp(emp.qualite + regles.gain_par_tache_reussie_dans_specialite, regles.qualite_min, regles.qualite_max);
       }
     });
+    if (emps.some((e) => e.isPlayer)) {
+      const secteur = state.data.secteurs.secteurs.find((s) => s.id === recipe.secteur_id);
+      gainSkillXp(state, recipe.secteur_id, 20, secteur?.nom);
+    }
     addLog(state, `✅ ${nomsEquipe} ${emps.length > 1 ? 'ont' : 'a'} produit avec succès : ${recipe.nom}.`);
   } else {
     emps.forEach((emp) => {
@@ -232,6 +273,7 @@ export function sellProduct(state, recipeId, qty = 1) {
   if (!recipe || have < qty) return false;
   state.products[recipeId] -= qty;
   state.money += recipe.prix_vente_base * qty;
+  gainSkillXp(state, 'commerce', 5 * qty, 'Commerce');
   addLog(state, `💰 Vendu ${qty}x ${recipe.nom} pour ${recipe.prix_vente_base * qty} pièces.`);
   return true;
 }
@@ -308,7 +350,8 @@ function finishHarvest(state, job) {
   const emp = getEmployee(state, job.employeeId);
   if (!dest || !emp) return;
 
-  const riskReel = clamp(dest.risque_base - (emp.qualite - 5) * 0.04, 0.02, 0.9);
+  const qualiteEff = effectiveQualite(state, emp);
+  const riskReel = clamp(dest.risque_base - (qualiteEff - 5) * 0.04, 0.02, 0.9);
   const r = Math.random();
   let issue;
   if (r < riskReel * 0.5) issue = 'echec_avec_incident';
@@ -317,13 +360,21 @@ function finishHarvest(state, job) {
   else issue = 'succes_total';
 
   if (issue === 'succes_total' || issue === 'succes_partiel') {
-    const facteur = (1 + (emp.qualite - 5) * 0.08) * (issue === 'succes_partiel' ? 0.5 : 1);
+    const facteur = (1 + (qualiteEff - 5) * 0.08) * (issue === 'succes_partiel' ? 0.5 : 1);
     dest.table_butin.forEach((entry) => {
       if (Math.random() <= entry.probabilite) {
         const qty = Math.max(1, Math.round(entry.quantite_base * facteur));
         addItem(state, entry.ingredient_id, qty);
       }
     });
+    if (emp.isPlayer) {
+      gainSkillXp(state, 'recolte', issue === 'succes_total' ? 20 : 10, 'Récolte');
+      if (Math.random() < 0.2) {
+        const item = PERSONAL_ITEMS[Math.floor(Math.random() * PERSONAL_ITEMS.length)];
+        addPersonalItem(state, item.id, 1);
+        addLog(state, `🎒 Trouvaille personnelle : ${item.nom}.`);
+      }
+    }
   }
 
   addLog(state, pickReportMessage(state, issue, emp.nom));

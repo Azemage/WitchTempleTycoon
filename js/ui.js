@@ -4,7 +4,7 @@ import {
   availableOptions, currentClientNode, chooseClientOption,
   unlockedSecteurs, lockableSecteurs, secteurUnlockCost, unlockSecteur,
   builtRooms, buildableRoomTypes, buildRoom, activeDecorations, decorateRoom, removeDecoration, roomAmbiance,
-  marketPrice, reputationTier,
+  marketPrice, reputationTier, playerSkillProgress, personalItems, equipItem, unequipItem,
 } from './engine.js';
 import { isEmployeeFree } from './state.js';
 import { COUCHE_ACTIVE, byCouche } from './data.js';
@@ -54,6 +54,8 @@ export function render(state) {
   renderHarvest(state);
   renderRooms(state);
   renderMarket(state);
+  renderSkills(state);
+  renderBackpack(state);
   renderLog(state);
   renderClientModal(state);
 }
@@ -335,6 +337,65 @@ function renderMarket(state) {
   entries.forEach(([id, qty]) => {
     const ing = state.data.ingredients.ingredients.find((i) => i.id === id);
     inv.appendChild(el('div', 'card-row', `<span>${ing?.nom || id}</span><span class="muted">x${qty}</span>`));
+  });
+}
+
+function renderSkills(state) {
+  const root = document.getElementById('skills-list');
+  root.innerHTML = '';
+  const progress = playerSkillProgress(state);
+  if (progress.length === 0) {
+    root.innerHTML = '<div class="muted">Produisez, récoltez ou vendez pour gagner de l\'expérience.</div>';
+    return;
+  }
+  progress.forEach((skill) => {
+    const secteur = state.data.secteurs.secteurs.find((s) => s.id === skill.id);
+    const nom = secteur?.nom || (skill.id === 'recolte' ? 'Récolte' : skill.id === 'commerce' ? 'Commerce' : skill.id);
+    const pct = Math.min(100, (skill.xp / skill.seuil) * 100);
+    root.appendChild(el('div', 'card', `
+      <div class="card-row"><span class="card-title">${nom}</span><span class="muted">niveau ${skill.level}</span></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="muted">${skill.xp}/${skill.seuil} xp</div>
+    `));
+  });
+}
+
+function renderBackpack(state) {
+  const equippedRoot = document.getElementById('backpack-equipped');
+  equippedRoot.innerHTML = '';
+  const equippedId = state.playerEquipment.amulette;
+  const equippedItem = personalItems().find((i) => i.id === equippedId);
+  if (equippedItem) {
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">✨ ${equippedItem.nom}</span><span class="muted">+${equippedItem.bonusQualite} qualité</span></div>
+      <div class="muted">${equippedItem.description}</div>
+    `);
+    const btn = document.createElement('button');
+    btn.textContent = 'Retirer';
+    btn.onclick = () => { unequipItem(state); render(state); };
+    card.appendChild(btn);
+    equippedRoot.appendChild(card);
+  } else {
+    equippedRoot.innerHTML = '<div class="muted">Aucun objet équipé.</div>';
+  }
+
+  const root = document.getElementById('backpack-list');
+  root.innerHTML = '';
+  const entries = Object.entries(state.playerInventory).filter(([, qty]) => qty > 0);
+  if (entries.length === 0) { root.innerHTML = '<div class="muted">Sac vide. Partez en récolte pour trouver des objets.</div>'; return; }
+  entries.forEach(([id, qty]) => {
+    const item = personalItems().find((i) => i.id === id);
+    if (!item) return;
+    const card = el('div', 'card', `
+      <div class="card-row"><span class="card-title">${item.nom}</span><span class="muted">x${qty} · +${item.bonusQualite} qualité</span></div>
+      <div class="muted">${item.description}</div>
+    `);
+    const btn = document.createElement('button');
+    btn.textContent = equippedId === id ? 'Équipé' : 'Équiper';
+    btn.disabled = equippedId === id;
+    btn.onclick = () => { equipItem(state, id); render(state); };
+    card.appendChild(btn);
+    root.appendChild(card);
   });
 }
 
