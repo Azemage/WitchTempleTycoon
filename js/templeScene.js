@@ -166,6 +166,17 @@ export class TempleScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D,E');
 
+    const dirs = { down: 0, left: 3, right: 6, up: 9 };
+    Object.entries(dirs).forEach(([name, base]) => {
+      this.anims.create({
+        key: `walk-${name}`,
+        frames: [base, base + 1, base, base + 2].map((f) => ({ key: 'player', frame: f })),
+        frameRate: 6,
+        repeat: -1,
+      });
+    });
+    this.lastFacing = 'down';
+
     this.promptText = this.add.text(0, 0, '', {
       fontSize: '12px', color: '#fff', backgroundColor: '#000000aa', padding: { x: 4, y: 2 },
     }).setDepth(10).setVisible(false);
@@ -190,11 +201,19 @@ export class TempleScene extends Phaser.Scene {
     const up = this.cursors.up.isDown || this.wasd.W.isDown;
     const down = this.cursors.down.isDown || this.wasd.S.isDown;
 
-    if (left) { body.setVelocityX(-speed); this.player.setFrame(3); }
-    else if (right) { body.setVelocityX(speed); this.player.setFrame(6); }
-    if (up) { body.setVelocityY(-speed); this.player.setFrame(9); }
-    else if (down) { body.setVelocityY(speed); this.player.setFrame(0); }
+    if (left) { body.setVelocityX(-speed); this.lastFacing = 'left'; }
+    else if (right) { body.setVelocityX(speed); this.lastFacing = 'right'; }
+    if (up) { body.setVelocityY(-speed); this.lastFacing = 'up'; }
+    else if (down) { body.setVelocityY(speed); this.lastFacing = 'down'; }
     body.velocity.normalize().scale(speed);
+
+    const moving = left || right || up || down;
+    if (moving) {
+      this.player.anims.play(`walk-${this.lastFacing}`, true);
+    } else {
+      this.player.anims.stop();
+      this.player.setFrame({ down: 0, left: 3, right: 6, up: 9 }[this.lastFacing]);
+    }
 
     const px = Math.floor(this.player.x / TILE);
     const py = Math.floor(this.player.y / TILE);
